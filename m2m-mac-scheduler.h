@@ -12,13 +12,18 @@
 #include <ns3/ff-mac-csched-sap.h>
 #include <ns3/ff-mac-sched-sap.h>
 #include <ns3/ff-mac-scheduler.h>
-#include <vector>
-#include <map>
 #include <ns3/nstime.h>
 #include <ns3/lte-amc.h>
+#include <ns3/fdbet-ff-mac-scheduler.h>
+#include <vector>
+#include <map>
 
 #define HARQ_PROC_NUM 8
 #define HARQ_DL_TIMEOUT 11
+
+// value for SINR outside the range defined by FF-API, used to indicate that there
+// is no CQI for this element
+#define NO_SINR -5000
 
 namespace ns3 {
 
@@ -29,7 +34,7 @@ struct pfsFlowPerf_t {
 	double lastAveragedThroughput;
 };
 
-class M2mMacScheduler {
+class M2mMacScheduler: public FfMacScheduler {
 public:
 	M2mMacScheduler();
 	virtual ~M2mMacScheduler();
@@ -43,6 +48,9 @@ public:
 	virtual void SetFfMacSchedSapUser(FfMacSchedSapUser* s);
 	virtual FfMacCschedSapProvider* GetFfMacCschedSapProvider();
 	virtual FfMacSchedSapProvider* GetFfMacSchedSapProvider();
+
+	friend class M2mSchedulerMemberCschedSapProvider;
+	friend class M2mSchedulerMemberSchedSapProvider;
 
 private:
 	//
@@ -91,9 +99,16 @@ private:
 	void RefreshDlCqiMaps(void);
 	void RefreshUlCqiMaps(void);
 
+	void UpdateDlRlcBufferInfo(uint16_t rnti, uint8_t lcid, uint16_t size);
+	void UpdateUlRlcBufferInfo(uint16_t rnti, uint16_t size);
+
 	void RefreshHarqProcesses();
+	uint8_t HarqProcessAvailability(uint16_t rnti);
+	uint8_t UpdateHarqProcessId(uint16_t rnti);
 
 	int GetRbgSize(int dlbandwidth);
+	int LcActivePerFlow(uint16_t rnti);
+	double EstimateUlSinr(uint16_t rnti, uint16_t rb);
 private:
 	Ptr<LteAmc> m_amc;
 
@@ -143,8 +158,6 @@ private:
 
 	double m_timeWindow;
 
-	uint16_t m_nextRntiUl; // RNTI of the next user to be served next scheduling in UL
-
 	// HARQ attributes <rtni,*>
 	/**
 	 * m_harqOn when false inhibit te HARQ mechanisms (by default active)
@@ -167,6 +180,22 @@ private:
 	std::vector<struct RachListElement_s> m_rachList;
 	std::vector<uint16_t> m_rachAllocationMap; // [rb i] = rnti
 	uint8_t m_ulGrantMcs; // MCS for UL grant (default 0)
+
+	// UL
+	uint16_t m_nextRntiUl; // RNTI of the next user to be served next scheduling in UL
+	/*
+	 * Map of previous allocated UE per RBG
+	 * (used to retrieve info from UL-CQI)
+	 */
+	std::map<uint16_t, std::vector<uint16_t> > m_allocationMaps;
+	/*
+	 * Map of UEs' UL-CQI per RBG
+	 */
+	std::map<uint16_t, std::vector<double> > m_ueCqi;
+	/*
+	 * Map of UEs' timers on UL-CQI per RBG
+	 */
+	std::map<uint16_t, uint32_t> m_ueCqiTimers;
 };
 
 class M2mSchedulerMemberCschedSapProvider: public FfMacCschedSapProvider {
