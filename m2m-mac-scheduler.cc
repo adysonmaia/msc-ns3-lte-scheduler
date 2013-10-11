@@ -11,8 +11,8 @@
 
 #include <ns3/simulator.h>
 #include <ns3/lte-amc.h>
-//#include "m2m-mac-scheduler.h"
-#include <ns3/m2m-mac-scheduler.h>
+#include "m2m-mac-scheduler.h"
+//#include <ns3/m2m-mac-scheduler.h>
 #include <ns3/lte-vendor-specific-parameters.h>
 #include <ns3/boolean.h>
 #include <cfloat>
@@ -22,7 +22,7 @@ NS_LOG_COMPONENT_DEFINE("M2mMacScheduler");
 
 namespace ns3 {
 
-NS_OBJECT_ENSURE_REGISTERED(M2mMacScheduler);
+NS_OBJECT_ENSURE_REGISTERED (M2mMacScheduler);
 
 int PfType0AllocationRbg[4] = { 10, // RGB size 1
 		26, // RGB size 2
@@ -603,7 +603,8 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 						m_dlHarqProcessesRlcPduListBuffer.find(rnti);
 				if (itRlcPdu == m_dlHarqProcessesRlcPduListBuffer.end()) {
 					NS_FATAL_ERROR(
-							"Unable to find RlcPdcList in HARQ buffer for RNTI " << m_dlInfoListBuffered.at(i).m_rnti);
+							"Unable to find RlcPdcList in HARQ buffer for RNTI "
+									<< m_dlInfoListBuffered.at(i).m_rnti);
 				}
 				for (uint16_t k = 0; k < (*itRlcPdu).second.size(); k++) {
 					(*itRlcPdu).second.at(k).at(harqId).clear();
@@ -678,7 +679,8 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 					m_dlHarqProcessesRlcPduListBuffer.find(rnti);
 			if (itRlcPdu == m_dlHarqProcessesRlcPduListBuffer.end()) {
 				NS_FATAL_ERROR(
-						"Unable to find RlcPdcList in HARQ buffer for RNTI " << rnti);
+						"Unable to find RlcPdcList in HARQ buffer for RNTI "
+								<< rnti);
 			}
 			for (uint8_t j = 0; j < nLayers; j++) {
 				if (retx.at(j)) {
@@ -736,7 +738,8 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 					m_dlHarqProcessesTimer.find(rnti);
 			if (itHarqTimer == m_dlHarqProcessesTimer.end()) {
 				NS_FATAL_ERROR(
-						"Unable to find HARQ timer for RNTI " << (uint16_t) rnti);
+						"Unable to find HARQ timer for RNTI "
+								<< (uint16_t) rnti);
 			}
 			(*itHarqTimer).second.at(harqId) = 0;
 			ret.m_buildDataList.push_back(newEl);
@@ -751,7 +754,8 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 							m_dlInfoListBuffered.at(i).m_rnti);
 			if (it == m_dlHarqProcessesStatus.end()) {
 				NS_FATAL_ERROR(
-						"No info find in HARQ buffer for UE " << m_dlInfoListBuffered.at(i).m_rnti);
+						"No info find in HARQ buffer for UE "
+								<< m_dlInfoListBuffered.at(i).m_rnti);
 			}
 			(*it).second.at(m_dlInfoListBuffered.at(i).m_harqProcessId) = 0;
 			std::map<uint16_t, DlHarqRlcPduListBuffer_t>::iterator itRlcPdu =
@@ -759,7 +763,8 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 							m_dlInfoListBuffered.at(i).m_rnti);
 			if (itRlcPdu == m_dlHarqProcessesRlcPduListBuffer.end()) {
 				NS_FATAL_ERROR(
-						"Unable to find RlcPdcList in HARQ buffer for RNTI " << m_dlInfoListBuffered.at(i).m_rnti);
+						"Unable to find RlcPdcList in HARQ buffer for RNTI "
+								<< m_dlInfoListBuffered.at(i).m_rnti);
 			}
 			for (uint16_t k = 0; k < (*itRlcPdu).second.size(); k++) {
 				(*itRlcPdu).second.at(k).at(
@@ -802,7 +807,8 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 				itTxMode = m_uesTxMode.find((*it).first);
 				if (itTxMode == m_uesTxMode.end()) {
 					NS_FATAL_ERROR(
-							"No Transmission Mode info on user " << (*it).first);
+							"No Transmission Mode info on user "
+									<< (*it).first);
 				}
 				int nLayer = TransmissionModesLayers::TxMode2LayerNum(
 						(*itTxMode).second);
@@ -1010,7 +1016,8 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 						if (itRlcPdu
 								== m_dlHarqProcessesRlcPduListBuffer.end()) {
 							NS_FATAL_ERROR(
-									"Unable to find RlcPdcList in HARQ buffer for RNTI " << (*itMap).first);
+									"Unable to find RlcPdcList in HARQ buffer for RNTI "
+											<< (*itMap).first);
 						}
 						(*itRlcPdu).second.at(j).at(newDci.m_harqProcess).push_back(
 								newRlcEl);
@@ -1035,7 +1042,8 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 					m_dlHarqProcessesDciBuffer.find(newEl.m_rnti);
 			if (itDci == m_dlHarqProcessesDciBuffer.end()) {
 				NS_FATAL_ERROR(
-						"Unable to find RNTI entry in DCI HARQ buffer for RNTI " << newEl.m_rnti);
+						"Unable to find RNTI entry in DCI HARQ buffer for RNTI "
+								<< newEl.m_rnti);
 			}
 			(*itDci).second.at(newDci.m_harqProcess) = newDci;
 			// refresh timer
@@ -1043,7 +1051,8 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 					m_dlHarqProcessesTimer.find(newEl.m_rnti);
 			if (itHarqTimer == m_dlHarqProcessesTimer.end()) {
 				NS_FATAL_ERROR(
-						"Unable to find HARQ timer for RNTI " << (uint16_t) newEl.m_rnti);
+						"Unable to find HARQ timer for RNTI "
+								<< (uint16_t) newEl.m_rnti);
 			}
 			(*itHarqTimer).second.at(newDci.m_harqProcess) = 0;
 		}
@@ -1272,6 +1281,21 @@ void M2mMacScheduler::DoSchedUlCqiInfoReq(
 
 void M2mMacScheduler::DoSchedUlTriggerReq(
 		const struct FfMacSchedSapProvider::SchedUlTriggerReqParameters& params) {
+	// Generate RBs map
+	FfMacSchedSapUser::SchedUlConfigIndParameters ret;
+	for (uint16_t i = 0; i < params.m_ulInfoList.size(); i++) {
+		UlInfoListElement_s ulInfo = params.m_ulInfoList.at(i);
+		if (ulInfo.m_receptionStatus != UlInfoListElement_s::NotOk) {
+
+		} else {
+
+		}
+	}
+	m_schedSapUser->SchedUlConfigInd(ret);
+}
+
+void M2mMacScheduler::DoSchedUlTriggerReq_Old(
+		const struct FfMacSchedSapProvider::SchedUlTriggerReqParameters& params) {
 	NS_LOG_FUNCTION (this << " UL - Frame no. " << (params.m_sfnSf >> 4) << " subframe no. " << (0xF & params.m_sfnSf) << " size " << params.m_ulInfoList.size ());
 
 	RefreshUlCqiMaps();
@@ -1314,8 +1338,8 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 				if (itProcId == m_ulHarqCurrentProcessId.end()) {
 					NS_LOG_ERROR ("No info find in HARQ buffer for UE (might change eNB) " << rnti);
 				}
-				uint8_t harqId = (uint8_t) ((*itProcId).second - HARQ_PERIOD)
-						% HARQ_PROC_NUM;
+				uint8_t harqId = (uint8_t)(
+						(*itProcId).second - HARQ_PERIOD) % HARQ_PROC_NUM;
 				NS_LOG_INFO (this << " UL-HARQ retx RNTI " << rnti << " harqId " << (uint16_t)harqId << " i " << i << " size " << params.m_ulInfoList.size ());
 				std::map<uint16_t, UlHarqProcessesDciBuffer_t>::iterator itHarq =
 						m_ulHarqProcessesDciBuffer.find(rnti);
@@ -1384,7 +1408,7 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 		if (ret.m_dciList.size() > 0) {
 			m_schedSapUser->SchedUlConfigInd(ret);
 		}
-		return;  // no flows to be scheduled
+		return; // no flows to be scheduled
 	}
 
 	// Divide the remaining resources equally among the active users starting from the subsequent one served last scheduling trigger
@@ -1556,7 +1580,8 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 					m_ulHarqProcessesDciBuffer.find(uldci.m_rnti);
 			if (itDci == m_ulHarqProcessesDciBuffer.end()) {
 				NS_FATAL_ERROR(
-						"Unable to find RNTI entry in UL DCI HARQ buffer for RNTI " << uldci.m_rnti);
+						"Unable to find RNTI entry in UL DCI HARQ buffer for RNTI "
+								<< uldci.m_rnti);
 			}
 			(*itDci).second.at(harqId) = uldci;
 		}
@@ -1622,7 +1647,8 @@ void M2mMacScheduler::RefreshDlCqiMaps(void) {
 			std::map<uint16_t, uint8_t>::iterator itMap = m_p10CqiRxed.find(
 					(*itP10).first);
 			NS_ASSERT_MSG(itMap != m_p10CqiRxed.end(),
-					" Does not find CQI report for user " << (*itP10).first);NS_LOG_INFO(this << " P10-CQI expired for user " << (*itP10).first);
+					" Does not find CQI report for user " << (*itP10).first);
+			NS_LOG_INFO(this << " P10-CQI expired for user " << (*itP10).first);
 			m_p10CqiRxed.erase(itMap);
 			std::map<uint16_t, uint32_t>::iterator temp = itP10;
 			itP10++;
@@ -1645,7 +1671,8 @@ void M2mMacScheduler::RefreshDlCqiMaps(void) {
 			std::map<uint16_t, SbMeasResult_s>::iterator itMap =
 					m_a30CqiRxed.find((*itA30).first);
 			NS_ASSERT_MSG(itMap != m_a30CqiRxed.end(),
-					" Does not find CQI report for user " << (*itA30).first);NS_LOG_INFO(this << " A30-CQI expired for user " << (*itA30).first);
+					" Does not find CQI report for user " << (*itA30).first);
+			NS_LOG_INFO(this << " A30-CQI expired for user " << (*itA30).first);
 			m_a30CqiRxed.erase(itMap);
 			std::map<uint16_t, uint32_t>::iterator temp = itA30;
 			itA30++;
@@ -1668,7 +1695,8 @@ void M2mMacScheduler::RefreshUlCqiMaps(void) {
 			std::map<uint16_t, std::vector<double> >::iterator itMap =
 					m_ueCqi.find((*itUl).first);
 			NS_ASSERT_MSG(itMap != m_ueCqi.end(),
-					" Does not find CQI report for user " << (*itUl).first); NS_LOG_INFO (this << " UL-CQI exired for user " << (*itUl).first);
+					" Does not find CQI report for user " << (*itUl).first);
+			NS_LOG_INFO (this << " UL-CQI exired for user " << (*itUl).first);
 			(*itMap).second.clear();
 			m_ueCqi.erase(itMap);
 			std::map<uint16_t, uint32_t>::iterator temp = itUl;
@@ -1723,7 +1751,8 @@ void M2mMacScheduler::RefreshHarqProcesses() {
 						m_dlHarqProcessesStatus.find((*itTimers).first);
 				if (itStat == m_dlHarqProcessesStatus.end()) {
 					NS_FATAL_ERROR(
-							"No Process Id Status found for this RNTI " << (*itTimers).first);
+							"No Process Id Status found for this RNTI "
+									<< (*itTimers).first);
 				}
 				(*itStat).second.at(i) = 0;
 				(*itTimers).second.at(i) = 0;
@@ -1792,7 +1821,8 @@ uint8_t M2mMacScheduler::UpdateHarqProcessId(uint16_t rnti) {
 		(*itStat).second.at(i) = 1;
 	} else {
 		NS_FATAL_ERROR(
-				"No HARQ process available for RNTI " << rnti << " check before update with HarqProcessAvailability");
+				"No HARQ process available for RNTI " << rnti
+						<< " check before update with HarqProcessAvailability");
 	}
 	return ((*it).second);
 }
@@ -1875,5 +1905,9 @@ double M2mMacScheduler::EstimateUlSinr(uint16_t rnti, uint16_t rb) {
 	}
 }
 
+}
+
+int main(int argc, char *argv[]) {
+	return 0;
 }
 

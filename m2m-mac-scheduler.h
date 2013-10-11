@@ -86,6 +86,8 @@ private:
 			const struct FfMacSchedSapProvider::SchedDlCqiInfoReqParameters& params);
 	void DoSchedUlTriggerReq(
 			const struct FfMacSchedSapProvider::SchedUlTriggerReqParameters& params);
+	void DoSchedUlTriggerReq_Old(
+				const struct FfMacSchedSapProvider::SchedUlTriggerReqParameters& params);
 	void DoSchedUlNoiseInterferenceReq(
 			const struct FfMacSchedSapProvider::SchedUlNoiseInterferenceReqParameters& params);
 	void DoSchedUlSrInfoReq(
