@@ -27,7 +27,7 @@
 
 namespace ns3 {
 
-struct pfsFlowPerf_t {
+struct m2mFlowPerf_t {
 	Time flowStart;
 	unsigned long totalBytesTransmitted;
 	unsigned int lastTtiBytesTrasmitted;
@@ -128,8 +128,8 @@ private:
 	std::map<LteFlowId_t, FfMacSchedSapProvider::SchedDlRlcBufferReqParameters> m_rlcBufferReq;
 
 	// Map of UE statistics (per RNTI basis)
-	std::map<uint16_t, pfsFlowPerf_t> m_flowStatsDl;
-	std::map<uint16_t, pfsFlowPerf_t> m_flowStatsUl;
+	std::map<uint16_t, m2mFlowPerf_t> m_flowStatsDl;
+	std::map<uint16_t, m2mFlowPerf_t> m_flowStatsUl;
 
 	/*
 	 * Map of UE's buffer status reports received

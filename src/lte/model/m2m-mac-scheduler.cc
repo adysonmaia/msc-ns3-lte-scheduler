@@ -11,8 +11,8 @@
 
 #include <ns3/simulator.h>
 #include <ns3/lte-amc.h>
-#include "m2m-mac-scheduler.h"
-//#include <ns3/m2m-mac-scheduler.h>
+//#include "m2m-mac-scheduler.h"
+#include <ns3/m2m-mac-scheduler.h>
 #include <ns3/lte-vendor-specific-parameters.h>
 #include <ns3/boolean.h>
 #include <cfloat>
@@ -24,7 +24,7 @@ namespace ns3 {
 
 NS_OBJECT_ENSURE_REGISTERED (M2mMacScheduler);
 
-int PfType0AllocationRbg[4] = { 10, // RGB size 1
+int M2mType0AllocationRbg[4] = { 10, // RGB size 1
 		26, // RGB size 2
 		63, // RGB size 3
 		110 // RGB size 4
@@ -301,26 +301,26 @@ void M2mMacScheduler::DoCschedLcConfigReq(
 		const struct FfMacCschedSapProvider::CschedLcConfigReqParameters& params) {
 	NS_LOG_FUNCTION(this << " New LC, rnti: " << params.m_rnti);
 
-	std::map<uint16_t, pfsFlowPerf_t>::iterator it;
+	std::map<uint16_t, m2mFlowPerf_t>::iterator it;
 	for (uint16_t i = 0; i < params.m_logicalChannelConfigList.size(); i++) {
 		it = m_flowStatsDl.find(params.m_rnti);
 
 		if (it == m_flowStatsDl.end()) {
-			pfsFlowPerf_t flowStatsDl;
+			m2mFlowPerf_t flowStatsDl;
 			flowStatsDl.flowStart = Simulator::Now();
 			flowStatsDl.totalBytesTransmitted = 0;
 			flowStatsDl.lastTtiBytesTrasmitted = 0;
 			flowStatsDl.lastAveragedThroughput = 1;
 			m_flowStatsDl.insert(
-					std::pair<uint16_t, pfsFlowPerf_t>(params.m_rnti,
+					std::pair<uint16_t, m2mFlowPerf_t>(params.m_rnti,
 							flowStatsDl));
-			pfsFlowPerf_t flowStatsUl;
+			m2mFlowPerf_t flowStatsUl;
 			flowStatsUl.flowStart = Simulator::Now();
 			flowStatsUl.totalBytesTransmitted = 0;
 			flowStatsUl.lastTtiBytesTrasmitted = 0;
 			flowStatsUl.lastAveragedThroughput = 1;
 			m_flowStatsUl.insert(
-					std::pair<uint16_t, pfsFlowPerf_t>(params.m_rnti,
+					std::pair<uint16_t, m2mFlowPerf_t>(params.m_rnti,
 							flowStatsUl));
 		}
 	}
@@ -779,8 +779,8 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 	for (int i = 0; i < rbgNum; i++) {
 		NS_LOG_INFO(this << " ALLOCATION for RBG " << i << " of " << rbgNum);
 		if (rbgMap.at(i) == false) {
-			std::map<uint16_t, pfsFlowPerf_t>::iterator it;
-			std::map<uint16_t, pfsFlowPerf_t>::iterator itMax =
+			std::map<uint16_t, m2mFlowPerf_t>::iterator it;
+			std::map<uint16_t, m2mFlowPerf_t>::iterator itMax =
 					m_flowStatsDl.end();
 			double rcqiMax = 0.0;
 			for (it = m_flowStatsDl.begin(); it != m_flowStatsDl.end(); it++) {
@@ -882,7 +882,7 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 	} // end for RBGs
 
 	// reset TTI stats of users
-	std::map<uint16_t, pfsFlowPerf_t>::iterator itStats;
+	std::map<uint16_t, m2mFlowPerf_t>::iterator itStats;
 	for (itStats = m_flowStatsDl.begin(); itStats != m_flowStatsDl.end();
 			itStats++) {
 		(*itStats).second.lastTtiBytesTrasmitted = 0;
@@ -1061,7 +1061,7 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 
 		ret.m_buildDataList.push_back(newEl);
 		// update UE stats
-		std::map<uint16_t, pfsFlowPerf_t>::iterator it;
+		std::map<uint16_t, m2mFlowPerf_t>::iterator it;
 		it = m_flowStatsDl.find((*itMap).first);
 		if (it != m_flowStatsDl.end()) {
 			(*it).second.lastTtiBytesTrasmitted = bytesTxed;
@@ -1418,7 +1418,7 @@ void M2mMacScheduler::DoSchedUlTriggerReq_Old(
 		rbPerFlow = 3; // at least 3 rbg per flow (till available resource) to ensure TxOpportunity >= 7 bytes
 	}
 	int rbAllocated = 0;
-	std::map<uint16_t, pfsFlowPerf_t>::iterator itStats;
+	std::map<uint16_t, m2mFlowPerf_t>::iterator itStats;
 	if (m_nextRntiUl != 0) {
 		for (it = m_ceBsrRxed.begin(); it != m_ceBsrRxed.end(); it++) {
 			if ((*it).first == m_nextRntiUl) {
@@ -1712,7 +1712,7 @@ void M2mMacScheduler::RefreshUlCqiMaps(void) {
 
 int M2mMacScheduler::GetRbgSize(int dlbandwidth) {
 	for (int i = 0; i < 4; i++) {
-		if (dlbandwidth < PfType0AllocationRbg[i]) {
+		if (dlbandwidth < M2mType0AllocationRbg[i]) {
 			return (i + 1);
 		}
 	}
@@ -1907,7 +1907,7 @@ double M2mMacScheduler::EstimateUlSinr(uint16_t rnti, uint16_t rb) {
 
 }
 
-int main(int argc, char *argv[]) {
-	return 0;
-}
+//int main(int argc, char *argv[]) {
+//	return 0;
+//}
 
