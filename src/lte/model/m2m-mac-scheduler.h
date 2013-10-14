@@ -14,6 +14,7 @@
 #include <ns3/ff-mac-scheduler.h>
 #include <ns3/nstime.h>
 #include <ns3/lte-amc.h>
+#include <ns3/eps-bearer.h>
 #include <ns3/fdbet-ff-mac-scheduler.h>
 #include <vector>
 #include <map>
@@ -87,7 +88,7 @@ private:
 	void DoSchedUlTriggerReq(
 			const struct FfMacSchedSapProvider::SchedUlTriggerReqParameters& params);
 	void DoSchedUlTriggerReq_Old(
-				const struct FfMacSchedSapProvider::SchedUlTriggerReqParameters& params);
+			const struct FfMacSchedSapProvider::SchedUlTriggerReqParameters& params);
 	void DoSchedUlNoiseInterferenceReq(
 			const struct FfMacSchedSapProvider::SchedUlNoiseInterferenceReqParameters& params);
 	void DoSchedUlSrInfoReq(
@@ -130,11 +131,6 @@ private:
 	// Map of UE statistics (per RNTI basis)
 	std::map<uint16_t, m2mFlowPerf_t> m_flowStatsDl;
 	std::map<uint16_t, m2mFlowPerf_t> m_flowStatsUl;
-
-	/*
-	 * Map of UE's buffer status reports received
-	 */
-	std::map<uint16_t, uint32_t> m_ceBsrRxed;
 
 	std::map<uint16_t, uint8_t> m_uesTxMode; // txMode of the UEs <rtni,transmissionMode>
 
@@ -198,6 +194,15 @@ private:
 	 * Map of UEs' timers on UL-CQI per RBG
 	 */
 	std::map<uint16_t, uint32_t> m_ueCqiTimers;
+
+	/*
+	 * Map of UE's buffer status reports received
+	 */
+	std::map<uint16_t, uint32_t> m_ceBsrRxed;
+
+	//------------------------------------------------
+
+	std::map<uint16_t, EpsBearer::Qci> m_ueQci;
 };
 
 class M2mSchedulerMemberCschedSapProvider: public FfMacCschedSapProvider {

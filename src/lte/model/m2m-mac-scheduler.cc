@@ -1283,14 +1283,15 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 		const struct FfMacSchedSapProvider::SchedUlTriggerReqParameters& params) {
 	// Generate RBs map
 	FfMacSchedSapUser::SchedUlConfigIndParameters ret;
-	for (uint16_t i = 0; i < params.m_ulInfoList.size(); i++) {
-		UlInfoListElement_s ulInfo = params.m_ulInfoList.at(i);
-		if (ulInfo.m_receptionStatus != UlInfoListElement_s::NotOk) {
-
-		} else {
-
-		}
-	}
+//	std::vector<UlInfoListElement_s> harqList, h2hList, m2mList;
+//	for (uint16_t i = 0; i < params.m_ulInfoList.size(); i++) {
+//		UlInfoListElement_s ulInfo = params.m_ulInfoList.at(i);
+//		if (ulInfo.m_receptionStatus != UlInfoListElement_s::NotOk) {
+//			harqList.push_back(ulInfo);
+//		} else {
+//			uint16_t rnti = ulInfo.m_rnti;
+//		}
+//	}
 	m_schedSapUser->SchedUlConfigInd(ret);
 }
 
