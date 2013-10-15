@@ -33,6 +33,13 @@ struct m2mFlowPerf_t {
 	unsigned long totalBytesTransmitted;
 	unsigned int lastTtiBytesTrasmitted;
 	double lastAveragedThroughput;
+	double lastAverageResourcesAllocated;
+	double lastAveragedBytesTransmitted;
+};
+
+struct m2mRbMapValue_t {
+	bool allocated;
+	uint16_t rnti;
 };
 
 class M2mMacScheduler: public FfMacScheduler {
@@ -202,7 +209,10 @@ private:
 
 	//------------------------------------------------
 
-	std::map<uint16_t, EpsBearer::Qci> m_ueQci;
+	std::map<uint16_t, EpsBearer::Qci> m_ueUlQci;
+	uint16_t m_minH2hRb;
+	uint16_t m_minM2mRb;
+	double m_minPercentM2mRb;
 };
 
 class M2mSchedulerMemberCschedSapProvider: public FfMacCschedSapProvider {
@@ -257,6 +267,24 @@ public:
 private:
 	M2mSchedulerMemberSchedSapProvider();
 	M2mMacScheduler* m_scheduler;
+};
+
+class M2mRbAllocationMap {
+public:
+	M2mRbAllocationMap(const uint16_t size);
+	inline ~M2mRbAllocationMap() {};
+
+	bool IsAllocated(const uint16_t index);
+	void Allocate(const uint16_t index, const uint16_t rnti);
+	std::vector<uint16_t> GetIndexes(const uint16_t rnti);
+	bool HasResources(const uint16_t rnti);
+	uint16_t GetRnti(const uint16_t index);
+	uint16_t GetSize();
+	uint16_t GetAvailableRbSize();
+	uint16_t GetFirstAvailableRb();
+	void Clear();
+private:
+	std::vector<struct m2mRbMapValue_t> m_map;
 };
 
 #endif /* M2M_MAC_SCHEDULER_H_ */
