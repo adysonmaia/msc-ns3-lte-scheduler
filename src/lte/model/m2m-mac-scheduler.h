@@ -34,13 +34,18 @@ struct m2mFlowPerf_t {
 	unsigned int lastTtiBytesTrasmitted;
 	double lastAveragedThroughput;
 	double lastAverageResourcesAllocated;
-	double lastAveragedBytesTransmitted;
+	double lastAveragedBsrReceived;
+	unsigned int lastTtiResourcesAllocated;
+	uint32_t lastTtiBsrReceived;
+	bool isM2m;
 };
 
 struct m2mRbMapValue_t {
 	bool allocated;
 	uint16_t rnti;
 };
+
+class M2mRbAllocationMap;
 
 class M2mMacScheduler: public FfMacScheduler {
 public:
@@ -65,45 +70,29 @@ private:
 	// Implementation of the CSCHED API primitives
 	// (See 4.1 for description of the primitives)
 	//
-	void DoCschedCellConfigReq(
-			const struct FfMacCschedSapProvider::CschedCellConfigReqParameters& params);
-	void DoCschedUeConfigReq(
-			const struct FfMacCschedSapProvider::CschedUeConfigReqParameters& params);
-	void DoCschedLcConfigReq(
-			const struct FfMacCschedSapProvider::CschedLcConfigReqParameters& params);
-	void DoCschedLcReleaseReq(
-			const struct FfMacCschedSapProvider::CschedLcReleaseReqParameters& params);
-	void DoCschedUeReleaseReq(
-			const struct FfMacCschedSapProvider::CschedUeReleaseReqParameters& params);
+	void DoCschedCellConfigReq(const struct FfMacCschedSapProvider::CschedCellConfigReqParameters& params);
+	void DoCschedUeConfigReq(const struct FfMacCschedSapProvider::CschedUeConfigReqParameters& params);
+	void DoCschedLcConfigReq(const struct FfMacCschedSapProvider::CschedLcConfigReqParameters& params);
+	void DoCschedLcReleaseReq(const struct FfMacCschedSapProvider::CschedLcReleaseReqParameters& params);
+	void DoCschedUeReleaseReq(const struct FfMacCschedSapProvider::CschedUeReleaseReqParameters& params);
 
 	//
 	// Implementation of the SCHED API primitives
 	// (See 4.2 for description of the primitives)
 	//
-	void DoSchedDlRlcBufferReq(
-			const struct FfMacSchedSapProvider::SchedDlRlcBufferReqParameters& params);
+	void DoSchedDlRlcBufferReq(const struct FfMacSchedSapProvider::SchedDlRlcBufferReqParameters& params);
 	void DoSchedDlPagingBufferReq(
 			const struct FfMacSchedSapProvider::SchedDlPagingBufferReqParameters& params);
-	void DoSchedDlMacBufferReq(
-			const struct FfMacSchedSapProvider::SchedDlMacBufferReqParameters& params);
-	void DoSchedDlTriggerReq(
-			const struct FfMacSchedSapProvider::SchedDlTriggerReqParameters& params);
-	void DoSchedDlRachInfoReq(
-			const struct FfMacSchedSapProvider::SchedDlRachInfoReqParameters& params);
-	void DoSchedDlCqiInfoReq(
-			const struct FfMacSchedSapProvider::SchedDlCqiInfoReqParameters& params);
-	void DoSchedUlTriggerReq(
-			const struct FfMacSchedSapProvider::SchedUlTriggerReqParameters& params);
-	void DoSchedUlTriggerReq_Old(
-			const struct FfMacSchedSapProvider::SchedUlTriggerReqParameters& params);
+	void DoSchedDlMacBufferReq(const struct FfMacSchedSapProvider::SchedDlMacBufferReqParameters& params);
+	void DoSchedDlTriggerReq(const struct FfMacSchedSapProvider::SchedDlTriggerReqParameters& params);
+	void DoSchedDlRachInfoReq(const struct FfMacSchedSapProvider::SchedDlRachInfoReqParameters& params);
+	void DoSchedDlCqiInfoReq(const struct FfMacSchedSapProvider::SchedDlCqiInfoReqParameters& params);
+	void DoSchedUlTriggerReq(const struct FfMacSchedSapProvider::SchedUlTriggerReqParameters& params);
 	void DoSchedUlNoiseInterferenceReq(
 			const struct FfMacSchedSapProvider::SchedUlNoiseInterferenceReqParameters& params);
-	void DoSchedUlSrInfoReq(
-			const struct FfMacSchedSapProvider::SchedUlSrInfoReqParameters& params);
-	void DoSchedUlMacCtrlInfoReq(
-			const struct FfMacSchedSapProvider::SchedUlMacCtrlInfoReqParameters& params);
-	void DoSchedUlCqiInfoReq(
-			const struct FfMacSchedSapProvider::SchedUlCqiInfoReqParameters& params);
+	void DoSchedUlSrInfoReq(const struct FfMacSchedSapProvider::SchedUlSrInfoReqParameters& params);
+	void DoSchedUlMacCtrlInfoReq(const struct FfMacSchedSapProvider::SchedUlMacCtrlInfoReqParameters& params);
+	void DoSchedUlCqiInfoReq(const struct FfMacSchedSapProvider::SchedUlCqiInfoReqParameters& params);
 
 private:
 	void RefreshDlCqiMaps(void);
@@ -119,6 +108,9 @@ private:
 	int GetRbgSize(int dlbandwidth);
 	int LcActivePerFlow(uint16_t rnti);
 	double EstimateUlSinr(uint16_t rnti, uint16_t rb);
+
+	void SchedUlHarq(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
+	void SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize, struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
 private:
 	Ptr<LteAmc> m_amc;
 
@@ -161,7 +153,7 @@ private:
 	 */
 	std::map<uint16_t, uint32_t> m_a30CqiTimers;
 
-	double m_timeWindow;
+	double m_h2hTimeWindow;
 
 	// HARQ attributes <rtni,*>
 	/**
@@ -186,13 +178,6 @@ private:
 	std::vector<uint16_t> m_rachAllocationMap; // [rb i] = rnti
 	uint8_t m_ulGrantMcs; // MCS for UL grant (default 0)
 
-	// UL
-	uint16_t m_nextRntiUl; // RNTI of the next user to be served next scheduling in UL
-	/*
-	 * Map of previous allocated UE per RBG
-	 * (used to retrieve info from UL-CQI)
-	 */
-	std::map<uint16_t, std::vector<uint16_t> > m_allocationMaps;
 	/*
 	 * Map of UEs' UL-CQI per RBG
 	 */
@@ -209,10 +194,16 @@ private:
 
 	//------------------------------------------------
 
+	/*
+	 * Map of previous allocated UE per RBG
+	 * (used to retrieve info from UL-CQI)
+	 */
+	std::map<uint16_t, M2mRbAllocationMap> m_ulAllocationMaps;
 	std::map<uint16_t, EpsBearer::Qci> m_ueUlQci;
 	uint16_t m_minH2hRb;
 	uint16_t m_minM2mRb;
 	double m_minPercentM2mRb;
+	double m_m2mTimeWindow;
 };
 
 class M2mSchedulerMemberCschedSapProvider: public FfMacCschedSapProvider {
@@ -220,16 +211,11 @@ public:
 	M2mSchedulerMemberCschedSapProvider(M2mMacScheduler* scheduler);
 
 	// inherited from FfMacCschedSapProvider
-	virtual void CschedCellConfigReq(
-			const struct CschedCellConfigReqParameters& params);
-	virtual void CschedUeConfigReq(
-			const struct CschedUeConfigReqParameters& params);
-	virtual void CschedLcConfigReq(
-			const struct CschedLcConfigReqParameters& params);
-	virtual void CschedLcReleaseReq(
-			const struct CschedLcReleaseReqParameters& params);
-	virtual void CschedUeReleaseReq(
-			const struct CschedUeReleaseReqParameters& params);
+	virtual void CschedCellConfigReq(const struct CschedCellConfigReqParameters& params);
+	virtual void CschedUeConfigReq(const struct CschedUeConfigReqParameters& params);
+	virtual void CschedLcConfigReq(const struct CschedLcConfigReqParameters& params);
+	virtual void CschedLcReleaseReq(const struct CschedLcReleaseReqParameters& params);
+	virtual void CschedUeReleaseReq(const struct CschedUeReleaseReqParameters& params);
 
 private:
 	M2mSchedulerMemberCschedSapProvider();
@@ -241,28 +227,17 @@ public:
 	M2mSchedulerMemberSchedSapProvider(M2mMacScheduler* scheduler);
 
 	// inherited from FfMacSchedSapProvider
-	virtual void SchedDlRlcBufferReq(
-			const struct SchedDlRlcBufferReqParameters& params);
-	virtual void SchedDlPagingBufferReq(
-			const struct SchedDlPagingBufferReqParameters& params);
-	virtual void SchedDlMacBufferReq(
-			const struct SchedDlMacBufferReqParameters& params);
-	virtual void SchedDlTriggerReq(
-			const struct SchedDlTriggerReqParameters& params);
-	virtual void SchedDlRachInfoReq(
-			const struct SchedDlRachInfoReqParameters& params);
-	virtual void SchedDlCqiInfoReq(
-			const struct SchedDlCqiInfoReqParameters& params);
-	virtual void SchedUlTriggerReq(
-			const struct SchedUlTriggerReqParameters& params);
-	virtual void SchedUlNoiseInterferenceReq(
-			const struct SchedUlNoiseInterferenceReqParameters& params);
-	virtual void SchedUlSrInfoReq(
-			const struct SchedUlSrInfoReqParameters& params);
-	virtual void SchedUlMacCtrlInfoReq(
-			const struct SchedUlMacCtrlInfoReqParameters& params);
-	virtual void SchedUlCqiInfoReq(
-			const struct SchedUlCqiInfoReqParameters& params);
+	virtual void SchedDlRlcBufferReq(const struct SchedDlRlcBufferReqParameters& params);
+	virtual void SchedDlPagingBufferReq(const struct SchedDlPagingBufferReqParameters& params);
+	virtual void SchedDlMacBufferReq(const struct SchedDlMacBufferReqParameters& params);
+	virtual void SchedDlTriggerReq(const struct SchedDlTriggerReqParameters& params);
+	virtual void SchedDlRachInfoReq(const struct SchedDlRachInfoReqParameters& params);
+	virtual void SchedDlCqiInfoReq(const struct SchedDlCqiInfoReqParameters& params);
+	virtual void SchedUlTriggerReq(const struct SchedUlTriggerReqParameters& params);
+	virtual void SchedUlNoiseInterferenceReq(const struct SchedUlNoiseInterferenceReqParameters& params);
+	virtual void SchedUlSrInfoReq(const struct SchedUlSrInfoReqParameters& params);
+	virtual void SchedUlMacCtrlInfoReq(const struct SchedUlMacCtrlInfoReqParameters& params);
+	virtual void SchedUlCqiInfoReq(const struct SchedUlCqiInfoReqParameters& params);
 
 private:
 	M2mSchedulerMemberSchedSapProvider();
@@ -272,10 +247,10 @@ private:
 class M2mRbAllocationMap {
 public:
 	M2mRbAllocationMap(const uint16_t size);
-	inline ~M2mRbAllocationMap() {};
+	~M2mRbAllocationMap();
 
-	bool IsAllocated(const uint16_t index);
-	void Allocate(const uint16_t index, const uint16_t rnti);
+	bool IsFree(const uint16_t indexStart, const uint16_t size = 1);
+	void Allocate(const uint16_t rnti, const uint16_t indexStart, const uint16_t size = 1);
 	std::vector<uint16_t> GetIndexes(const uint16_t rnti);
 	bool HasResources(const uint16_t rnti);
 	uint16_t GetRnti(const uint16_t index);
