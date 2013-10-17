@@ -109,8 +109,10 @@ private:
 	int LcActivePerFlow(uint16_t rnti);
 	double EstimateUlSinr(uint16_t rnti, uint16_t rb);
 
-	void SchedUlHarq(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
-	void SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize, struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
+	void SchedUlHarq(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap,
+			struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
+	void SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize,
+			struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
 private:
 	Ptr<LteAmc> m_amc;
 
