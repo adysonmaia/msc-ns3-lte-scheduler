@@ -29,6 +29,7 @@
 #include "ns3/internet-module.h"
 #include "ns3/point-to-point-helper.h"
 #include "ns3/applications-module.h"
+#include "iostream.h"
 //#include "ns3/gtk-config-store.h"
 
 using namespace ns3;
@@ -36,7 +37,7 @@ using namespace ns3;
 int main(int argc, char *argv[]) {
 	uint16_t numberOfNodes = 1;
 	double distance = 60.0;
-	double simTime = 1.1;
+	double simTime = 0.5;
 	double interPacketInterval = 100;
 
 	CommandLine cmd;
@@ -58,13 +59,13 @@ int main(int argc, char *argv[]) {
 	Ptr<Node> pgw = epcHelper->GetPgwNode();
 
 	// Uncomment to enable logging
-//  lteHelper->EnableLogComponents ();
+//	lteHelper->EnableLogComponents();
 	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
 
 	// Default scheduler is PF
 	lteHelper->SetSchedulerType("ns3::M2mMacScheduler");
 
-	// Create a single RemoteHost
+// Create a single RemoteHost
 	NodeContainer remoteHostContainer;
 	remoteHostContainer.Create(1);
 	Ptr<Node> remoteHost = remoteHostContainer.Get(0);
@@ -124,16 +125,15 @@ int main(int argc, char *argv[]) {
 
 	// Attach one UE per eNodeB
 	for (uint16_t i = 0; i < numberOfNodes; i++) {
-		lteHelper->Attach(ueLteDevs.Get(i), enbLteDevs.Get(i));
-		// side effect: the default EPS bearer will be activated
+		lteHelper->Attach(ueLteDevs.Get(i), enbLteDevs.Get(0));
 	}
 
 	// Activate a data radio bearer
 	EpsBearer bearer = EpsBearer(EpsBearer::NGBR_VIDEO_TCP_DEFAULT);
-	Ptr<EpcTft> tft = Create<EpcTft> ();
+	Ptr<EpcTft> tft = Create<EpcTft>();
 	EpcTft::PacketFilter pf;
 	pf.remoteAddress = remoteHostAddr;
-	tft->Add (pf);
+	tft->Add(pf);
 	lteHelper->ActivateDedicatedEpsBearer(ueLteDevs, bearer, tft);
 	//	lteHelper->EnableTraces();
 
@@ -149,13 +149,12 @@ int main(int argc, char *argv[]) {
 		UdpClientHelper ulClient(remoteHostAddr, ulPort);
 		ulClient.SetAttribute("Interval", TimeValue(MilliSeconds(interPacketInterval)));
 		ulClient.SetAttribute("MaxPackets", UintegerValue(1000000));
-		ulClient.SetAttribute ("PacketSize", UintegerValue (1024));
+		ulClient.SetAttribute("PacketSize", UintegerValue(1024));
 
 		clientApps.Add(ulClient.Install(ueNodes.Get(u)));
 	}
 	serverApps.Start(Seconds(0.01));
 	clientApps.Start(Seconds(0.01));
-	lteHelper->EnableTraces();
 
 	Simulator::Stop(Seconds(simTime));
 	Simulator::Run();

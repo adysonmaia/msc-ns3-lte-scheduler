@@ -413,7 +413,7 @@ void M2mMacScheduler::DoCschedLcConfigReq(
 		flowStatsDl.flowStart = Simulator::Now();
 		flowStatsDl.totalBytesTransmitted = 0;
 		flowStatsDl.lastTtiBytesTrasmitted = 0;
-		flowStatsDl.lastAveragedThroughput = 1;
+		flowStatsDl.lastAveragedThroughput = 0;
 		flowStatsDl.lastAverageResourcesAllocated = 0;
 		flowStatsDl.lastAveragedBsrReceived = 0;
 		flowStatsDl.lastTtiResourcesAllocated = 0;
@@ -429,7 +429,7 @@ void M2mMacScheduler::DoCschedLcConfigReq(
 		flowStatsUl.flowStart = Simulator::Now();
 		flowStatsUl.totalBytesTransmitted = 0;
 		flowStatsUl.lastTtiBytesTrasmitted = 0;
-		flowStatsUl.lastAveragedThroughput = 1;
+		flowStatsUl.lastAveragedThroughput = 0;
 		flowStatsUl.lastAverageResourcesAllocated = 0;
 		flowStatsUl.lastAveragedBsrReceived = 0;
 		flowStatsUl.lastTtiResourcesAllocated = 0;
@@ -577,7 +577,8 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 	std::vector<struct RachListElement_s>::iterator itRach;
 	for (itRach = m_rachList.begin(); itRach != m_rachList.end(); itRach++) {
 		NS_ASSERT_MSG(
-				m_amc->GetTbSizeFromMcs(m_ulGrantMcs, m_cschedCellConfig.m_ulBandwidth) > (*itRach).m_estimatedSize,
+				m_amc->GetTbSizeFromMcs(m_ulGrantMcs, m_cschedCellConfig.m_ulBandwidth)
+						> (*itRach).m_estimatedSize,
 				" Default UL Grant MCS does not allow to send RACH messages");
 		BuildRarListElement_s newRar;
 		newRar.m_rnti = (*itRach).m_rnti;
@@ -1326,7 +1327,7 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 	if (m_harqOn && params.m_ulInfoList.size() > 0) {
 		for (std::vector<UlInfoListElement_s>::const_iterator itUlInfo = params.m_ulInfoList.begin();
 				itUlInfo != params.m_ulInfoList.end(); itUlInfo++) {
-			if ((*itUlInfo).m_receptionStatus != UlInfoListElement_s::NotOk && m_harqOn) {
+			if ((*itUlInfo).m_receptionStatus == UlInfoListElement_s::NotOk && m_harqOn) {
 				harqList.push_back((*itUlInfo).m_rnti);
 			}
 		}
@@ -1522,26 +1523,22 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 		}
 	}
 
-	m_schedSapUser->SchedUlConfigInd(response);
-	m_ulAllocationMaps.insert(std::pair<uint16_t, M2mRbAllocationMap>(params.m_sfnSf, rbMap));
-
 	// Update global UE stats
 	// update UEs stats
 	for (std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.begin();
 			itStats != m_flowStatsUl.end(); itStats++) {
+		double timeWindow = ((*itStats).second.isM2m) ? m_m2mTimeWindow : m_h2hTimeWindow;
 		(*itStats).second.totalBytesTransmitted += (*itStats).second.lastTtiBytesTrasmitted;
-		if ((*itStats).second.totalBytesTransmitted != 0.0) {
-			double timeWindow = ((*itStats).second.isM2m) ? m_m2mTimeWindow : m_h2hTimeWindow;
-			(*itStats).second.lastAveragedThroughput = ((1.0 - (1.0 / timeWindow))
-					* (*itStats).second.lastAveragedThroughput)
-					+ ((1.0 / timeWindow) * (double) ((*itStats).second.lastTtiBytesTrasmitted / 0.001));
-			(*itStats).second.lastAverageResourcesAllocated = (1.0 / timeWindow)
-					* (*itStats).second.lastTtiResourcesAllocated
-					+ (1.0 - (1.0 / timeWindow)) * (*itStats).second.lastAverageResourcesAllocated;
-			(*itStats).second.lastAveragedBsrReceived = (1.0 / timeWindow)
-					* (*itStats).second.lastTtiBsrReceived
-					+ (1.0 - (1.0 / timeWindow)) * (*itStats).second.lastAveragedBsrReceived;
+		(*itStats).second.lastAveragedThroughput = ((1.0 - (1.0 / timeWindow))
+				* (*itStats).second.lastAveragedThroughput)
+				+ ((1.0 / timeWindow) * (double) ((*itStats).second.lastTtiBytesTrasmitted / 0.001));
+		(*itStats).second.lastAverageResourcesAllocated = (1.0 / timeWindow)
+				* (*itStats).second.lastTtiResourcesAllocated
+				+ (1.0 - (1.0 / timeWindow)) * (*itStats).second.lastAverageResourcesAllocated;
+		(*itStats).second.lastAveragedBsrReceived = (1.0 / timeWindow) * (*itStats).second.lastTtiBsrReceived
+				+ (1.0 - (1.0 / timeWindow)) * (*itStats).second.lastAveragedBsrReceived;
 
+		if ((*itStats).second.lastTtiResourcesAllocated > 0) {
 			NS_LOG_INFO(
 					this << " UL UE " << (*itStats).first << " Total bytes "
 					<< (*itStats).second.totalBytesTransmitted << " Average throughput "
@@ -1553,6 +1550,9 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 		(*itStats).second.lastTtiResourcesAllocated = 0;
 		(*itStats).second.lastTtiBsrReceived = 0;
 	}
+
+	m_ulAllocationMaps.insert(std::pair<uint16_t, M2mRbAllocationMap>(params.m_sfnSf, rbMap));
+	m_schedSapUser->SchedUlConfigInd(response);
 }
 
 // --------------------------------------------------------------
@@ -1882,6 +1882,9 @@ void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAlloc
 	while (it != ueList.end() && rbStart + minRbPerFlow < rbEnd) {
 		if (rbStart + rbPerFlow > rbEnd) {
 			rbPerFlow = minRbPerFlow;
+		}
+		if (rbStart + rbPerFlow + minRbPerFlow > rbEnd) {
+			rbPerFlow = rbEnd - rbStart;
 		}
 		if (rbMap.IsFree(rbStart, rbPerFlow)) {
 			UlDciListElement_s uldci;
