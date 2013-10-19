@@ -48,7 +48,7 @@ M2mRbAllocationMap::~M2mRbAllocationMap() {
 	m_map.clear();
 }
 
-bool M2mRbAllocationMap::IsFree(const uint16_t indexStart, const uint16_t size) {
+bool M2mRbAllocationMap::IsFree(const uint16_t indexStart, const uint16_t size) const {
 	bool free = true;
 	for (uint16_t j = indexStart; j < indexStart + size; j++) {
 		if (m_map.at(j).allocated) {
@@ -66,7 +66,7 @@ void M2mRbAllocationMap::Allocate(const uint16_t rnti, const uint16_t indexStart
 	}
 }
 
-std::vector<uint16_t> M2mRbAllocationMap::GetIndexes(const uint16_t rnti) {
+std::vector<uint16_t> M2mRbAllocationMap::GetIndexes(const uint16_t rnti) const {
 	std::vector<uint16_t> result;
 	for (uint16_t i = 0; i < m_map.size(); i++) {
 		struct m2mRbMapValue_t mapValue = m_map.at(i);
@@ -77,8 +77,8 @@ std::vector<uint16_t> M2mRbAllocationMap::GetIndexes(const uint16_t rnti) {
 	return result;
 }
 
-bool M2mRbAllocationMap::HasResources(const uint16_t rnti) {
-	std::vector<m2mRbMapValue_t>::iterator it = m_map.begin();
+bool M2mRbAllocationMap::HasResources(const uint16_t rnti) const {
+	std::vector<m2mRbMapValue_t>::const_iterator it = m_map.begin();
 	bool response = false;
 	while (it != m_map.end()) {
 		if ((*it).allocated && (*it).rnti == rnti) {
@@ -90,17 +90,17 @@ bool M2mRbAllocationMap::HasResources(const uint16_t rnti) {
 	return response;
 }
 
-uint16_t M2mRbAllocationMap::GetRnti(const uint16_t index) {
+uint16_t M2mRbAllocationMap::GetRnti(const uint16_t index) const {
 	struct m2mRbMapValue_t mapValue = m_map.at(index);
 	return mapValue.rnti;
 }
 
-uint16_t M2mRbAllocationMap::GetSize() {
+uint16_t M2mRbAllocationMap::GetSize() const {
 	return m_map.size();
 }
 
-uint16_t M2mRbAllocationMap::GetAvailableRbSize() {
-	std::vector<m2mRbMapValue_t>::iterator it = m_map.begin();
+uint16_t M2mRbAllocationMap::GetAvailableRbSize() const {
+	std::vector<m2mRbMapValue_t>::const_iterator it = m_map.begin();
 	uint16_t response = 0;
 	while (it != m_map.end()) {
 		if (!(*it).allocated) {
@@ -111,7 +111,7 @@ uint16_t M2mRbAllocationMap::GetAvailableRbSize() {
 	return response;
 }
 
-uint16_t M2mRbAllocationMap::GetFirstAvailableRb() {
+uint16_t M2mRbAllocationMap::GetFirstAvailableRb() const {
 	for (uint16_t i = 0; i < m_map.size(); i++) {
 		struct m2mRbMapValue_t mapValue = m_map.at(i);
 		if (!mapValue.allocated) {
@@ -230,6 +230,7 @@ void M2mSchedulerMemberSchedSapProvider::SchedUlCqiInfoReq(const struct SchedUlC
 M2mMacScheduler::M2mMacScheduler() :
 		m_cschedSapUser(0), m_schedSapUser(0) {
 	m_amc = CreateObject<LteAmc>();
+	m_uniformRandom = CreateObject<UniformRandomVariable>();
 	m_cschedSapProvider = new M2mSchedulerMemberCschedSapProvider(this);
 	m_schedSapProvider = new M2mSchedulerMemberSchedSapProvider(this);
 }
@@ -347,6 +348,11 @@ void M2mMacScheduler::DoCschedUeConfigReq(
 	} else {
 		(*it).second = params.m_transmissionMode;
 	}
+
+	std::map<uint16_t, uint32_t>::iterator itGrant = m_m2mGrantTimers.find(params.m_rnti);
+	if (itGrant == m_m2mGrantTimers.end()) {
+		m_m2mGrantTimers.insert(std::pair<uint16_t, uint32_t>(params.m_rnti, 0));
+	}
 }
 
 void M2mMacScheduler::DoCschedUeReleaseReq(
@@ -366,6 +372,7 @@ void M2mMacScheduler::DoCschedUeReleaseReq(
 	m_flowStatsUl.erase(params.m_rnti);
 	m_ceBsrRxed.erase(params.m_rnti);
 	m_ueUlQci.erase(params.m_rnti);
+	m_m2mGrantTimers.erase(params.m_rnti);
 	std::map<LteFlowId_t, FfMacSchedSapProvider::SchedDlRlcBufferReqParameters>::iterator it =
 			m_rlcBufferReq.begin();
 	std::map<LteFlowId_t, FfMacSchedSapProvider::SchedDlRlcBufferReqParameters>::iterator temp;
@@ -452,7 +459,7 @@ void M2mMacScheduler::DoCschedLcReleaseReq(
 					&& ((*it).first.m_lcId == params.m_logicalChannelIdentity.at(i))) {
 				temp = it;
 				it++;
-				m_rlcBufferReq.erase(temp);
+				m_rlcBufferReq.erase(it);
 			} else {
 				it++;
 			}
@@ -1311,11 +1318,13 @@ void M2mMacScheduler::DoSchedUlCqiInfoReq(
 
 void M2mMacScheduler::DoSchedUlTriggerReq(
 		const struct FfMacSchedSapProvider::SchedUlTriggerReqParameters& params) {
-	NS_LOG_FUNCTION(
-			this << " Ul Frame no. " << (params.m_sfnSf >> 4) << " subframe no. "
-			<< (0xF & params.m_sfnSf));
+//	NS_LOG_FUNCTION(
+//			this << " Ul Frame no. " << (params.m_sfnSf >> 4) << " subframe no. "
+//			<< (0xF & params.m_sfnSf));
 
 	RefreshUlCqiMaps();
+	RefreshM2MAccessGrantTimers();
+
 	struct FfMacSchedSapUser::SchedUlConfigIndParameters response;
 	M2mRbAllocationMap rbMap(m_cschedCellConfig.m_ulBandwidth);
 	std::vector<uint16_t> harqList, h2hList, m2mList;
@@ -1358,6 +1367,11 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 		std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(rnti);
 		if (itQci != m_ueUlQci.end() && (*itQci).second > EpsBearer::NGBR_VIDEO_TCP_DEFAULT) {
 			m2mList.push_back(rnti);
+
+			std::map<uint16_t, uint32_t>::iterator itGrant = m_m2mGrantTimers.find(rnti);
+			if (itGrant != m_m2mGrantTimers.end() && (*itGrant).second > 0) {
+				continue;
+			}
 
 			if (itStats != m_flowStatsUl.end()
 					&& (*itStats).second.lastAveragedThroughput > m2mMaxLastAveragedThroughput) {
@@ -1424,6 +1438,7 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 		if (itQci != m_ueUlQci.end() && m2mMaxDelay > 0) {
 			priority -= EpsBearer((*itQci).second).GetPacketDelayBudgetMs() / m2mMaxDelay;
 		}
+		priority = std::max(priority, 0.0);
 		priorityMap.insert(std::pair<uint16_t, double>(rnti, priority));
 		itM2m++;
 	}
@@ -1442,18 +1457,24 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 			priorityMap.erase(maxPriority.first);
 		}
 	}
+
 	// Frequency Domain
+	std::map<uint16_t, double> m2mPrioValues;
+	for (itM2m = m2mChosen.begin(); itM2m != m2mChosen.end(); itM2m++) {
+		m2mPrioValues.insert(std::pair<uint16_t, double>(*itM2m, 0.0));
+	}
 	for (uint16_t rbStart = rbMap.GetFirstAvailableRb(); rbStart < rbMap.GetSize(); rbStart += m_minM2mRb) {
-		std::pair<std::vector<uint16_t>::iterator, double> maxPriority(m2mChosen.end(), 0);
-		itM2m = m2mChosen.begin();
-		while (itM2m != m2mChosen.end()) {
-			std::map<uint16_t, std::vector<double> >::iterator itCqi = m_ueCqi.find(*itM2m);
+		std::pair<uint16_t, double> maxPriority(0, 0);
+		std::map<uint16_t, double>::iterator itValue = m2mPrioValues.begin();
+		while (itValue != m2mPrioValues.end()) {
+			uint16_t rnti = (*itValue).first;
+			std::map<uint16_t, std::vector<double> >::iterator itCqi = m_ueCqi.find(rnti);
 			if (itCqi != m_ueCqi.end()) {
 				double minSinr = DBL_MAX;
 				for (uint16_t j = 0; j < m_minM2mRb; j++) {
 					double sinr = (*itCqi).second.at(rbStart + j);
 					if (sinr == NO_SINR) {
-						sinr = EstimateUlSinr(*itM2m, rbStart + j);
+						sinr = EstimateUlSinr(rnti, rbStart + j);
 					}
 					if (sinr < minSinr) {
 						minSinr = sinr;
@@ -1462,23 +1483,24 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 				double spectralEfficiency = log2(
 						1.0 + (std::pow(10, minSinr / 10) / ((-std::log(5.0 * 0.00005)) / 1.5)));
 				int cqi = m_amc->GetCqiFromSpectralEfficiency(spectralEfficiency);
+				(*itValue).second = spectralEfficiency;
 				if (cqi != 0) {
 					if (spectralEfficiency >= maxPriority.second) {
-						maxPriority.first = itM2m;
+						maxPriority.first = rnti;
 						maxPriority.second = spectralEfficiency;
 					}
-					itM2m++;
+					itValue++;
 				} else {
-					m2mChosen.erase(itM2m++);
+					m2mPrioValues.erase(itValue++);
 				}
 			} else {
-				m2mChosen.erase(itM2m++);
+				m2mPrioValues.erase(itValue++);
 			}
 		}
-		if (maxPriority.first != m2mChosen.end()) {
+		if (maxPriority.first != 0) {
 			int cqi = m_amc->GetCqiFromSpectralEfficiency(maxPriority.second);
 			UlDciListElement_s uldci;
-			uldci.m_rnti = *(maxPriority.first);
+			uldci.m_rnti = maxPriority.first;
 			uldci.m_rbStart = rbStart;
 			uldci.m_rbLen = m_minM2mRb;
 			uldci.m_mcs = m_amc->GetMcsFromCqi(cqi);
@@ -1497,7 +1519,7 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 			uldci.m_pdcchPowerOffset = 0; // not used
 
 			response.m_dciList.push_back(uldci);
-			m2mChosen.erase(maxPriority.first);
+			m2mPrioValues.erase(uldci.m_rnti);
 			rbMap.Allocate(uldci.m_rnti, rbStart, m_minM2mRb);
 			UpdateUlRlcBufferInfo(uldci.m_rnti, uldci.m_tbSize);
 
@@ -1523,6 +1545,14 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 		}
 	}
 
+	UpdateM2MAccessGrantTimers(m2mList, rbMap);
+
+	if (rbMap.GetSize() != rbMap.GetAvailableRbSize()) {
+		NS_LOG_FUNCTION(
+				this << " Ul Frame no. " << (params.m_sfnSf >> 4) << " subframe no. "
+				<< (0xF & params.m_sfnSf));
+	}
+
 	// Update global UE stats
 	// update UEs stats
 	for (std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.begin();
@@ -1540,8 +1570,8 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 
 		if ((*itStats).second.lastTtiResourcesAllocated > 0) {
 			NS_LOG_INFO(
-					this << " UL UE " << (*itStats).first << " Total bytes "
-					<< (*itStats).second.totalBytesTransmitted << " Average throughput "
+					this << " UL UE " << (*itStats).first << " Last bytes "
+					<< (*itStats).second.lastTtiBytesTrasmitted << " Average throughput "
 					<< (*itStats).second.lastAveragedThroughput << " RB "
 					<< (*itStats).second.lastTtiResourcesAllocated);
 		}
@@ -1962,6 +1992,34 @@ void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAlloc
 			}
 		}
 		it++;
+	}
+}
+
+void M2mMacScheduler::RefreshM2MAccessGrantTimers() {
+	for (std::map<uint16_t, uint32_t>::iterator it = m_m2mGrantTimers.begin(); it != m_m2mGrantTimers.end();
+			it++) {
+		if ((*it).second > 0) {
+			(*it).second--;
+		}
+	}
+}
+
+void M2mMacScheduler::UpdateM2MAccessGrantTimers(const std::vector<uint16_t> &ueList,
+		const M2mRbAllocationMap &rbMap) {
+	for (std::vector<uint16_t>::const_iterator itM2m = ueList.begin(); itM2m != ueList.end(); itM2m++) {
+		if (!rbMap.HasResources(*itM2m)) {
+			std::map<uint16_t, EpsBearer::Qci>::iterator itQci = m_ueUlQci.find(*itM2m);
+			std::map<uint16_t, uint32_t>::iterator itGrant = m_m2mGrantTimers.find(*itM2m);
+			if (itQci != m_ueUlQci.end()) {
+				uint16_t delay = EpsBearer((*itQci).second).GetPacketDelayBudgetMs();
+				uint32_t waitTime = m_uniformRandom->GetInteger(0, delay / 2);
+				if (itGrant != m_m2mGrantTimers.end()) {
+					(*itGrant).second = waitTime;
+				} else {
+					m_m2mGrantTimers.insert(std::pair<uint16_t, uint32_t>(*itM2m, waitTime));
+				}
+			}
+		}
 	}
 }
 

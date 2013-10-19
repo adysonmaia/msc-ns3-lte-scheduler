@@ -16,6 +16,7 @@
 #include <ns3/lte-amc.h>
 #include <ns3/eps-bearer.h>
 #include <ns3/fdbet-ff-mac-scheduler.h>
+#include <ns3/random-variable-stream.h>
 #include <vector>
 #include <map>
 
@@ -113,6 +114,8 @@ private:
 			struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
 	void SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize,
 			struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
+	void RefreshM2MAccessGrantTimers();
+	void UpdateM2MAccessGrantTimers(const std::vector<uint16_t> &ueList, const M2mRbAllocationMap &rbMap);
 private:
 	Ptr<LteAmc> m_amc;
 
@@ -202,10 +205,12 @@ private:
 	 */
 	std::map<uint16_t, M2mRbAllocationMap> m_ulAllocationMaps;
 	std::map<uint16_t, EpsBearer::Qci> m_ueUlQci;
+	std::map<uint16_t, uint32_t> m_m2mGrantTimers;
 	uint16_t m_minH2hRb;
 	uint16_t m_minM2mRb;
 	double m_minPercentM2mRb;
 	double m_m2mTimeWindow;
+	Ptr<UniformRandomVariable> m_uniformRandom;
 };
 
 class M2mSchedulerMemberCschedSapProvider: public FfMacCschedSapProvider {
@@ -251,14 +256,14 @@ public:
 	M2mRbAllocationMap(const uint16_t size);
 	~M2mRbAllocationMap();
 
-	bool IsFree(const uint16_t indexStart, const uint16_t size = 1);
+	bool IsFree(const uint16_t indexStart, const uint16_t size = 1) const;
 	void Allocate(const uint16_t rnti, const uint16_t indexStart, const uint16_t size = 1);
-	std::vector<uint16_t> GetIndexes(const uint16_t rnti);
-	bool HasResources(const uint16_t rnti);
-	uint16_t GetRnti(const uint16_t index);
-	uint16_t GetSize();
-	uint16_t GetAvailableRbSize();
-	uint16_t GetFirstAvailableRb();
+	std::vector<uint16_t> GetIndexes(const uint16_t rnti) const;
+	bool HasResources(const uint16_t rnti) const;
+	uint16_t GetRnti(const uint16_t index) const;
+	uint16_t GetSize() const;
+	uint16_t GetAvailableRbSize() const ;
+	uint16_t GetFirstAvailableRb() const;
 	void Clear();
 private:
 	std::vector<struct m2mRbMapValue_t> m_map;

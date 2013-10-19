@@ -37,8 +37,8 @@ using namespace ns3;
 int main(int argc, char *argv[]) {
 	uint16_t numberOfNodes = 1;
 	double distance = 60.0;
-	double simTime = 0.5;
-	double interPacketInterval = 100;
+	double simTime = 1.1;
+	double interPacketInterval = 50;
 
 	CommandLine cmd;
 	cmd.AddValue("numberOfNodes", "Number of eNodeBs + UE pairs", numberOfNodes);
@@ -129,7 +129,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Activate a data radio bearer
-	EpsBearer bearer = EpsBearer(EpsBearer::NGBR_VIDEO_TCP_DEFAULT);
+//	EpsBearer bearer = EpsBearer(EpsBearer::NGBR_VIDEO_TCP_DEFAULT);
+	EpsBearer bearer = EpsBearer(EpsBearer::NGBR_M2M_REGULAR_REPORT_11);
 	Ptr<EpcTft> tft = Create<EpcTft>();
 	EpcTft::PacketFilter pf;
 	pf.remoteAddress = remoteHostAddr;
@@ -149,7 +150,7 @@ int main(int argc, char *argv[]) {
 		UdpClientHelper ulClient(remoteHostAddr, ulPort);
 		ulClient.SetAttribute("Interval", TimeValue(MilliSeconds(interPacketInterval)));
 		ulClient.SetAttribute("MaxPackets", UintegerValue(1000000));
-		ulClient.SetAttribute("PacketSize", UintegerValue(1024));
+		ulClient.SetAttribute("PacketSize", UintegerValue(125));
 
 		clientApps.Add(ulClient.Install(ueNodes.Get(u)));
 	}
