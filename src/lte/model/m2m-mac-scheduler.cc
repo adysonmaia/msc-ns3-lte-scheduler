@@ -1180,7 +1180,7 @@ void M2mMacScheduler::DoSchedUlMacCtrlInfoReq(
 			}
 
 			uint16_t rnti = params.m_macCeList.at(i).m_rnti;
-			NS_LOG_LOGIC (this << " UL RNTI " << rnti << " Buffer " << buffer);
+//			NS_LOG_LOGIC (this << " UL RNTI " << rnti << " Buffer " << buffer);
 			it = m_ceBsrRxed.find(rnti);
 			if (it == m_ceBsrRxed.end()) {
 				// create the new entry
@@ -1253,12 +1253,12 @@ void M2mMacScheduler::DoSchedUlCqiInfoReq(
 			} else {
 				// update the value
 				(*itCqi).second.at(i) = sinr;
-//				NS_LOG_DEBUG (this << " UL RNTI " << rnti << " RB " << i << " SINR " << sinr);
 				// update correspondent timer
 				std::map<uint16_t, uint32_t>::iterator itTimers;
 				itTimers = m_ueCqiTimers.find(rnti);
 				(*itTimers).second = m_cqiTimersThreshold;
 			}
+//			NS_LOG_DEBUG (this << " UL RNTI " << rnti << " RB " << i << " SINR " << sinr);
 		}
 		// remove obsolete info on allocation
 		m_ulAllocationMaps.erase(itMap);
@@ -1285,7 +1285,6 @@ void M2mMacScheduler::DoSchedUlCqiInfoReq(
 				double sinr = LteFfConverter::fpS11dot3toDouble(params.m_ulCqi.m_sinr.at(j));
 				newCqi.push_back(sinr);
 //				NS_LOG_INFO (this << " RNTI " << rnti << " new SRS-CQI for RB  " << j << " value " << sinr);
-
 			}
 			m_ueCqi.insert(std::pair<uint16_t, std::vector<double> >(rnti, newCqi));
 			// generate correspondent timer

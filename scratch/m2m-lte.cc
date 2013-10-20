@@ -36,14 +36,21 @@ using namespace ns3;
 
 int main(int argc, char *argv[]) {
 	uint16_t numberOfNodes = 1;
-	double distance = 60.0;
-	double simTime = 1.1;
+	double simTime = 1.0;
 	double interPacketInterval = 50;
+	double minRadius = 0;
+	double maxRadius = 300;
+	unsigned int bandwidth = 25; // n RB
+	double statsStartTime = 0.300;
+
+	Config::SetDefault("ns3::LteEnbRrc::SrsPeriodicity", UintegerValue(320));
+	Config::SetDefault("ns3::LteEnbNetDevice::UlBandwidth", UintegerValue(bandwidth));
+	Config::SetDefault("ns3::LteEnbNetDevice::DlBandwidth", UintegerValue(bandwidth));
 
 	CommandLine cmd;
 	cmd.AddValue("numberOfNodes", "Number of eNodeBs + UE pairs", numberOfNodes);
+	cmd.AddValue("cellRadius", "Radius [m] of cell", maxRadius);
 	cmd.AddValue("simTime", "Total duration of the simulation [s])", simTime);
-	cmd.AddValue("distance", "Distance between eNBs [m]", distance);
 	cmd.AddValue("interPacketInterval", "Inter packet interval [ms])", interPacketInterval);
 	cmd.Parse(argc, argv);
 
@@ -60,7 +67,7 @@ int main(int argc, char *argv[]) {
 
 	// Uncomment to enable logging
 //	lteHelper->EnableLogComponents();
-	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
+//	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
 
 	// Default scheduler is PF
 	lteHelper->SetSchedulerType("ns3::M2mMacScheduler");
@@ -96,15 +103,24 @@ int main(int argc, char *argv[]) {
 	ueNodes.Create(numberOfNodes);
 
 	// Install Mobility Model
+	Ptr<UniformRandomVariable> uniformRandomVar = CreateObject<UniformRandomVariable>();
+	uniformRandomVar->SetAttribute("Min", DoubleValue(minRadius));
+	uniformRandomVar->SetAttribute("Max", DoubleValue(maxRadius));
+	Ptr<RandomDiscPositionAllocator> posAllocator = CreateObject<RandomDiscPositionAllocator>();
+	posAllocator->SetX(0.0);
+	posAllocator->SetY(0.0);
+	posAllocator->SetRho(uniformRandomVar);
+	MobilityHelper ueMobility;
+	ueMobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
+	ueMobility.SetPositionAllocator(posAllocator);
+	ueMobility.Install(ueNodes);
+
+	MobilityHelper enbMobility;
 	Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
-	for (uint16_t i = 0; i < numberOfNodes; i++) {
-		positionAlloc->Add(Vector(distance * i, 0, 0));
-	}
-	MobilityHelper mobility;
-	mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
-	mobility.SetPositionAllocator(positionAlloc);
-	mobility.Install(enbNodes);
-	mobility.Install(ueNodes);
+	positionAlloc->Add(Vector(0, 0, 0));
+	enbMobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
+	enbMobility.SetPositionAllocator(positionAlloc);
+	enbMobility.Install(enbNodes);
 
 	// Install LTE Devices to the nodes
 	NetDeviceContainer enbLteDevs = lteHelper->InstallEnbDevice(enbNodes);
@@ -136,7 +152,6 @@ int main(int argc, char *argv[]) {
 	pf.remoteAddress = remoteHostAddr;
 	tft->Add(pf);
 	lteHelper->ActivateDedicatedEpsBearer(ueLteDevs, bearer, tft);
-	//	lteHelper->EnableTraces();
 
 	// Install and start applications on UEs and remote host
 	uint16_t ulPort = 2000;
@@ -157,11 +172,29 @@ int main(int argc, char *argv[]) {
 	serverApps.Start(Seconds(0.01));
 	clientApps.Start(Seconds(0.01));
 
-	Simulator::Stop(Seconds(simTime));
+//	lteHelper->EnablePdcpTraces();
+	lteHelper->EnableRlcTraces();
+	lteHelper->EnableUlMacTraces();
+	Ptr<RadioBearerStatsCalculator> rlcStats = lteHelper->GetRlcStats();
+	rlcStats->SetAttribute("StartTime", TimeValue(Seconds(statsStartTime)));
+	rlcStats->SetAttribute("EpochDuration", TimeValue(Seconds(simTime)));
+
+	Simulator::Stop(Seconds(simTime + statsStartTime - 0.0001));
 	Simulator::Run();
 
 	// GtkConfigStore config;
 	// config.ConfigureAttributes ();
+
+	std::cout << "UL - Test with " << numberOfNodes << " user(s)" << std::endl;
+	std::vector<uint64_t> ulDataTxed;
+	for (int i = 0; i < numberOfNodes; i++) {
+		// get the imsi
+		uint64_t imsi = ueLteDevs.Get(i)->GetObject<LteUeNetDevice>()->GetImsi();
+		// get the lcId
+		uint8_t lcId = 4;
+		ulDataTxed.push_back(rlcStats->GetUlTxData(imsi, lcId));
+		std::cout << "\tUser " << i << " imsi " << imsi << " bytes txed " << (double)ulDataTxed.at (i) << "  thr " << (double)ulDataTxed.at (i) / simTime << std::endl;
+	}
 
 	Simulator::Destroy();
 	return 0;
