@@ -584,8 +584,7 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 	std::vector<struct RachListElement_s>::iterator itRach;
 	for (itRach = m_rachList.begin(); itRach != m_rachList.end(); itRach++) {
 		NS_ASSERT_MSG(
-				m_amc->GetTbSizeFromMcs(m_ulGrantMcs, m_cschedCellConfig.m_ulBandwidth)
-						> (*itRach).m_estimatedSize,
+				m_amc->GetTbSizeFromMcs(m_ulGrantMcs, m_cschedCellConfig.m_ulBandwidth) > (*itRach).m_estimatedSize,
 				" Default UL Grant MCS does not allow to send RACH messages");
 		BuildRarListElement_s newRar;
 		newRar.m_rnti = (*itRach).m_rnti;
@@ -1895,104 +1894,266 @@ void M2mMacScheduler::SchedUlHarq(const std::vector<uint16_t> &ueList, M2mRbAllo
 
 void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap,
 		const uint16_t rbSize, struct FfMacSchedSapUser::SchedUlConfigIndParameters &response) {
-	int nflows = ueList.size();
 	uint16_t rbStart = rbMap.GetFirstAvailableRb();
-	uint16_t rbEnd = rbStart + rbSize;
-	// at least 3 rbg per flow to ensure TxOpportunity >= 7 bytes
-	uint16_t minRbPerFlow = 3;
+	uint32_t nRbGroup = 0.5 * rbSize * (rbSize + 1) + 1;
 
-	// Divide the remaining resources equally among the active users starting from the subsequent one served last scheduling trigger
-	uint16_t rbPerFlow = rbSize / nflows;
-	if (rbPerFlow < minRbPerFlow) {
-		rbPerFlow = minRbPerFlow; // at least 3 rbg per flow (till available resource) to ensure TxOpportunity >= 7 bytes
+	// Create de Matrix of possible allocations
+//	bool *mtx = new bool[nRbGroup*rbSize];
+	std::vector<std::vector<bool> > mtx;
+	mtx.resize(nRbGroup, std::vector<bool>(rbSize, false));
+
+	uint32_t groupSize = 0;
+	uint32_t groupStart = 0;
+	for (uint32_t c = 0; c < nRbGroup; c++) {
+		for (uint32_t r = 0; r < rbSize; r++) {
+			bool value = (r >= groupStart && r < groupStart + groupSize) ? true : false;
+//			mtx[c * nRbGroup + r] = value;
+			mtx[c][r] = value;
+			if (r == nRbGroup - 1 && (value || c == 0)) {
+				groupSize++;
+				groupStart = 0;
+			}
+		}
 	}
-
-	std::vector<uint16_t>::const_iterator it = ueList.begin();
-	while (it != ueList.end() && rbStart + minRbPerFlow < rbEnd) {
-		if (rbStart + rbPerFlow > rbEnd) {
-			rbPerFlow = minRbPerFlow;
-		}
-		if (rbStart + rbPerFlow + minRbPerFlow > rbEnd) {
-			rbPerFlow = rbEnd - rbStart;
-		}
-		if (rbMap.IsFree(rbStart, rbPerFlow)) {
-			UlDciListElement_s uldci;
-			uldci.m_rnti = *it;
-			uldci.m_rbStart = rbStart;
-			uldci.m_rbLen = rbPerFlow;
-
-			std::map<uint16_t, std::vector<double> >::iterator itCqi = m_ueCqi.find(*it);
-			if (itCqi != m_ueCqi.end()) {
-				// take the lowest CQI value (worst RB)
-				double minSinr = (*itCqi).second.at(uldci.m_rbStart);
-				if (minSinr == NO_SINR) {
-					minSinr = EstimateUlSinr(*it, uldci.m_rbStart);
-				}
-				for (uint16_t i = uldci.m_rbStart; i < uldci.m_rbStart + uldci.m_rbLen; i++) {
-					double sinr = (*itCqi).second.at(i);
-					if (sinr == NO_SINR) {
-						sinr = EstimateUlSinr(*it, i);
-					}
-					if ((*itCqi).second.at(i) < minSinr) {
-						minSinr = (*itCqi).second.at(i);
-					}
-				}
-				// translate SINR -> cqi: WILD ACK: same as DL
-				double s = log2(1 + (std::pow(10, minSinr / 10) / ((-std::log(5.0 * 0.00005)) / 1.5)));
-				int cqi = m_amc->GetCqiFromSpectralEfficiency(s);
-				if (cqi != 0) {
-					uldci.m_mcs = m_amc->GetMcsFromCqi(cqi);
-					uldci.m_tbSize = (m_amc->GetTbSizeFromMcs(uldci.m_mcs, rbPerFlow) / 8);
-					uldci.m_ndi = 1;
-					uldci.m_cceIndex = 0;
-					uldci.m_aggrLevel = 1;
-					uldci.m_ueTxAntennaSelection = 3; // antenna selection OFF
-					uldci.m_hopping = false;
-					uldci.m_n2Dmrs = 0;
-					uldci.m_tpc = 0; // no power control
-					uldci.m_cqiRequest = false; // only period CQI at this stage
-					uldci.m_ulIndex = 0; // TDD parameter
-					uldci.m_dai = 1; // TDD parameter
-					uldci.m_freqHopping = 0;
-					uldci.m_pdcchPowerOffset = 0; // not used
-
-					UpdateUlRlcBufferInfo(uldci.m_rnti, uldci.m_tbSize);
-					rbMap.Allocate(uldci.m_rnti, uldci.m_rbStart, uldci.m_rbLen);
-					response.m_dciList.push_back(uldci);
-					rbStart += uldci.m_rbLen;
-
-					// store DCI for HARQ_PERIOD
-					if (m_harqOn == true) {
-						uint8_t harqId = 0;
-						std::map<uint16_t, uint8_t>::iterator itProcId;
-						itProcId = m_ulHarqCurrentProcessId.find(uldci.m_rnti);
-						if (itProcId == m_ulHarqCurrentProcessId.end()) {
-							NS_FATAL_ERROR("No info find in HARQ buffer for UE " << uldci.m_rnti);
+	uint32_t nRbgAvailable = nRbGroup;
+	std::vector<uint16_t> ueAvailable = ueList;
+	while (nRbgAvailable > 0 && ueAvailable.size() != 0) {
+		double maxValue = 0;
+		uint32_t rbgChosenSize, rbgChosenStart;
+		double spectralEfficiencyChosen;
+		std::vector<uint16_t>::iterator itUeChosen = ueAvailable.end();
+		std::vector<uint16_t>::iterator itUe = ueAvailable.begin();
+		while (itUe != ueAvailable.end()) {
+			std::map<uint16_t, std::vector<double> >::iterator itCqi = m_ueCqi.find(*itUe);
+			std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(*itUe);
+			if (itCqi != m_ueCqi.end() && itStats != m_flowStatsUl.end()) {
+				for (uint32_t c = 0; c < nRbGroup; c++) {
+					uint32_t rbgSize = 0;
+					uint32_t rbgStart = rbSize;
+					double minSinr = DBL_MAX;
+					double value = 0.0;
+					for (uint32_t r = 0; r < rbSize; r++) {
+//						if (mtx[c * nRbGroup + r]) {
+						if (mtx[c][r]) {
+							if (rbgStart == rbSize)
+								rbgStart = r;
+							rbgSize++;
+							double sinr = (*itCqi).second.at(r + rbStart);
+							if (sinr == NO_SINR) {
+								sinr = EstimateUlSinr(*itUe, r + rbStart);
+							}
+							if (sinr < minSinr)
+								minSinr = sinr;
 						}
-						harqId = (*itProcId).second;
-						std::map<uint16_t, UlHarqProcessesDciBuffer_t>::iterator itDci =
-								m_ulHarqProcessesDciBuffer.find(uldci.m_rnti);
-						if (itDci == m_ulHarqProcessesDciBuffer.end()) {
-							NS_FATAL_ERROR(
-									"Unable to find RNTI entry in UL DCI HARQ buffer for RNTI " << uldci.m_rnti);
-						}
-						(*itDci).second.at(harqId) = uldci;
 					}
-
-					std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(uldci.m_rnti);
-					std::map<uint16_t, uint32_t>::iterator itBsr = m_ceBsrRxed.find(uldci.m_rnti);
-					if (itStats != m_flowStatsUl.end()) {
-						(*itStats).second.lastTtiBytesTrasmitted = uldci.m_tbSize;
-						(*itStats).second.lastTtiResourcesAllocated = uldci.m_rbLen;
-						(*itStats).second.lastTtiBsrReceived =
-								(itBsr != m_ceBsrRxed.end()) ? (*itBsr).second : uldci.m_tbSize;
+					if (rbgSize > 0) {
+						// translate SINR -> cqi: WILD ACK: same as DL
+						double s = log2(
+								1 + (std::pow(10, minSinr / 10) / ((-std::log(5.0 * 0.00005)) / 1.5)));
+						int cqi = m_amc->GetCqiFromSpectralEfficiency(s);
+						if (cqi != 0) {
+							double achievableThr = 1000
+									* m_amc->GetTbSizeFromMcs(m_amc->GetMcsFromCqi(cqi), rbgSize) / 8;
+							if ((*itStats).second.lastAveragedThroughput > 0.0) {
+								value = achievableThr / (*itStats).second.lastAveragedThroughput;
+							} else {
+								value = achievableThr;
+							}
+							if (value > maxValue || maxValue == 0.0) {
+								maxValue = value;
+								itUeChosen = itUe;
+								rbgChosenStart = rbgStart;
+								rbgChosenSize = rbgSize;
+								spectralEfficiencyChosen = s;
+							}
+						}
 					}
 				}
 			}
+			itUe++;
 		}
-		it++;
+		if (itUeChosen != ueAvailable.end()) {
+			int cqi = m_amc->GetCqiFromSpectralEfficiency(spectralEfficiencyChosen);
+			UlDciListElement_s uldci;
+			uldci.m_rnti = *itUeChosen;
+			uldci.m_rbStart = rbStart + rbgChosenStart;
+			uldci.m_rbLen = rbgChosenSize;
+			uldci.m_mcs = m_amc->GetMcsFromCqi(cqi);
+			uldci.m_tbSize = (m_amc->GetTbSizeFromMcs(uldci.m_mcs, uldci.m_rbLen) / 8);
+			uldci.m_ndi = 1;
+			uldci.m_cceIndex = 0;
+			uldci.m_aggrLevel = 1;
+			uldci.m_ueTxAntennaSelection = 3; // antenna selection OFF
+			uldci.m_hopping = false;
+			uldci.m_n2Dmrs = 0;
+			uldci.m_tpc = 0; // no power control
+			uldci.m_cqiRequest = false; // only period CQI at this stage
+			uldci.m_ulIndex = 0; // TDD parameter
+			uldci.m_dai = 1; // TDD parameter
+			uldci.m_freqHopping = 0;
+			uldci.m_pdcchPowerOffset = 0; // not used
+
+			UpdateUlRlcBufferInfo(uldci.m_rnti, uldci.m_tbSize);
+			rbMap.Allocate(uldci.m_rnti, uldci.m_rbStart, uldci.m_rbLen);
+			response.m_dciList.push_back(uldci);
+			ueAvailable.erase(itUeChosen);
+
+			for (uint32_t c = 0; c < nRbGroup; c++) {
+				bool intercepts = false;
+				for (uint32_t r = uldci.m_rbStart; r < uldci.m_rbStart + uldci.m_rbLen; r++) {
+					if (mtx[c][r]) {
+//					if (mtx[c * nRbGroup + r]) {
+						intercepts = true;
+						break;
+					}
+				}
+				if (intercepts) {
+					nRbgAvailable--;
+					for (uint32_t r = 0; r < rbSize; r++) {
+//						mtx[c * nRbGroup + r] = false;
+						mtx[c][r] = false;
+					}
+				}
+			}
+
+			// store DCI for HARQ_PERIOD
+			if (m_harqOn == true) {
+				uint8_t harqId = 0;
+				std::map<uint16_t, uint8_t>::iterator itProcId;
+				itProcId = m_ulHarqCurrentProcessId.find(uldci.m_rnti);
+				if (itProcId == m_ulHarqCurrentProcessId.end()) {
+					NS_FATAL_ERROR("No info find in HARQ buffer for UE " << uldci.m_rnti);
+				}
+				harqId = (*itProcId).second;
+				std::map<uint16_t, UlHarqProcessesDciBuffer_t>::iterator itDci =
+						m_ulHarqProcessesDciBuffer.find(uldci.m_rnti);
+				if (itDci == m_ulHarqProcessesDciBuffer.end()) {
+					NS_FATAL_ERROR(
+							"Unable to find RNTI entry in UL DCI HARQ buffer for RNTI " << uldci.m_rnti);
+				}
+				(*itDci).second.at(harqId) = uldci;
+			}
+
+			std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(uldci.m_rnti);
+			std::map<uint16_t, uint32_t>::iterator itBsr = m_ceBsrRxed.find(uldci.m_rnti);
+			if (itStats != m_flowStatsUl.end()) {
+				(*itStats).second.lastTtiBytesTrasmitted = uldci.m_tbSize;
+				(*itStats).second.lastTtiResourcesAllocated = uldci.m_rbLen;
+				(*itStats).second.lastTtiBsrReceived =
+						(itBsr != m_ceBsrRxed.end()) ? (*itBsr).second : uldci.m_tbSize;
+			}
+		} else {
+			break;
+		}
 	}
+
+	// TODO verificar se ainda tem recursos disponiveis e aloca-los
+
+//	delete[] mtx;
 }
+
+/*
+ void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap,
+ const uint16_t rbSize, struct FfMacSchedSapUser::SchedUlConfigIndParameters &response) {
+ int nflows = ueList.size();
+ uint16_t rbStart = rbMap.GetFirstAvailableRb();
+ uint16_t rbEnd = rbStart + rbSize;
+ // at least 3 rbg per flow to ensure TxOpportunity >= 7 bytes
+ uint16_t minRbPerFlow = 3;
+
+ // Divide the remaining resources equally among the active users starting from the subsequent one served last scheduling trigger
+ uint16_t rbPerFlow = rbSize / nflows;
+ if (rbPerFlow < minRbPerFlow) {
+ rbPerFlow = minRbPerFlow; // at least 3 rbg per flow (till available resource) to ensure TxOpportunity >= 7 bytes
+ }
+
+ std::vector<uint16_t>::const_iterator it = ueList.begin();
+ while (it != ueList.end() && rbStart + minRbPerFlow < rbEnd) {
+ if (rbStart + rbPerFlow > rbEnd) {
+ rbPerFlow = minRbPerFlow;
+ }
+ if (rbStart + rbPerFlow + minRbPerFlow > rbEnd) {
+ rbPerFlow = rbEnd - rbStart;
+ }
+ if (rbMap.IsFree(rbStart, rbPerFlow)) {
+ UlDciListElement_s uldci;
+ uldci.m_rnti = *it;
+ uldci.m_rbStart = rbStart;
+ uldci.m_rbLen = rbPerFlow;
+
+ std::map<uint16_t, std::vector<double> >::iterator itCqi = m_ueCqi.find(*it);
+ if (itCqi != m_ueCqi.end()) {
+ // take the lowest CQI value (worst RB)
+ double minSinr = (*itCqi).second.at(uldci.m_rbStart);
+ if (minSinr == NO_SINR) {
+ minSinr = EstimateUlSinr(*it, uldci.m_rbStart);
+ }
+ for (uint16_t i = uldci.m_rbStart; i < uldci.m_rbStart + uldci.m_rbLen; i++) {
+ double sinr = (*itCqi).second.at(i);
+ if (sinr == NO_SINR) {
+ sinr = EstimateUlSinr(*it, i);
+ }
+ if ((*itCqi).second.at(i) < minSinr) {
+ minSinr = (*itCqi).second.at(i);
+ }
+ }
+ // translate SINR -> cqi: WILD ACK: same as DL
+ double s = log2(1 + (std::pow(10, minSinr / 10) / ((-std::log(5.0 * 0.00005)) / 1.5)));
+ int cqi = m_amc->GetCqiFromSpectralEfficiency(s);
+ if (cqi != 0) {
+ uldci.m_mcs = m_amc->GetMcsFromCqi(cqi);
+ uldci.m_tbSize = (m_amc->GetTbSizeFromMcs(uldci.m_mcs, rbPerFlow) / 8);
+ uldci.m_ndi = 1;
+ uldci.m_cceIndex = 0;
+ uldci.m_aggrLevel = 1;
+ uldci.m_ueTxAntennaSelection = 3; // antenna selection OFF
+ uldci.m_hopping = false;
+ uldci.m_n2Dmrs = 0;
+ uldci.m_tpc = 0; // no power control
+ uldci.m_cqiRequest = false; // only period CQI at this stage
+ uldci.m_ulIndex = 0; // TDD parameter
+ uldci.m_dai = 1; // TDD parameter
+ uldci.m_freqHopping = 0;
+ uldci.m_pdcchPowerOffset = 0; // not used
+
+ UpdateUlRlcBufferInfo(uldci.m_rnti, uldci.m_tbSize);
+ rbMap.Allocate(uldci.m_rnti, uldci.m_rbStart, uldci.m_rbLen);
+ response.m_dciList.push_back(uldci);
+ rbStart += uldci.m_rbLen;
+
+ // store DCI for HARQ_PERIOD
+ if (m_harqOn == true) {
+ uint8_t harqId = 0;
+ std::map<uint16_t, uint8_t>::iterator itProcId;
+ itProcId = m_ulHarqCurrentProcessId.find(uldci.m_rnti);
+ if (itProcId == m_ulHarqCurrentProcessId.end()) {
+ NS_FATAL_ERROR("No info find in HARQ buffer for UE " << uldci.m_rnti);
+ }
+ harqId = (*itProcId).second;
+ std::map<uint16_t, UlHarqProcessesDciBuffer_t>::iterator itDci =
+ m_ulHarqProcessesDciBuffer.find(uldci.m_rnti);
+ if (itDci == m_ulHarqProcessesDciBuffer.end()) {
+ NS_FATAL_ERROR(
+ "Unable to find RNTI entry in UL DCI HARQ buffer for RNTI " << uldci.m_rnti);
+ }
+ (*itDci).second.at(harqId) = uldci;
+ }
+
+ std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(uldci.m_rnti);
+ std::map<uint16_t, uint32_t>::iterator itBsr = m_ceBsrRxed.find(uldci.m_rnti);
+ if (itStats != m_flowStatsUl.end()) {
+ (*itStats).second.lastTtiBytesTrasmitted = uldci.m_tbSize;
+ (*itStats).second.lastTtiResourcesAllocated = uldci.m_rbLen;
+ (*itStats).second.lastTtiBsrReceived =
+ (itBsr != m_ceBsrRxed.end()) ? (*itBsr).second : uldci.m_tbSize;
+ }
+ }
+ }
+ }
+ it++;
+ }
+ }
+ */
 
 void M2mMacScheduler::RefreshM2MAccessGrantTimers() {
 	for (std::map<uint16_t, uint32_t>::iterator it = m_m2mGrantTimers.begin(); it != m_m2mGrantTimers.end();

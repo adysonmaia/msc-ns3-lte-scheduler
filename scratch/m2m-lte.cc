@@ -55,8 +55,10 @@ std::vector<EpsBearer> GetAvailableM2mRegularEpsBearers(double simulationTime) {
 }
 
 int main(int argc, char *argv[]) {
-	uint16_t nM2mTrigger = 50;
-	uint16_t nM2mRegular = 100;
+//	uint16_t nM2mTrigger = 50;
+//	uint16_t nM2mRegular = 100;
+	uint16_t nM2mTrigger = 1;
+	uint16_t nM2mRegular = 1;
 	uint16_t nH2h = 5;
 	double simTime = 1.0;
 	double minRadius = 0;
@@ -96,7 +98,7 @@ int main(int argc, char *argv[]) {
 
 	// Uncomment to enable logging
 //	lteHelper->EnableLogComponents();
-//	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
+	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
 
 	// Create Nodes: eNodeB and UE
 	NodeContainer enbNodes;
