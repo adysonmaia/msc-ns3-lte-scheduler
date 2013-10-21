@@ -74,7 +74,7 @@ EpsBearer::IsGbr () const
     case NGBR_VIDEO_TCP_PREMIUM:
     case NGBR_VIDEO_TCP_DEFAULT:
       return false;
-    case NGBR_M2M_TRIGGERED_REPORT:
+    case NGBR_M2M_TRIGGER_REPORT:
     case NGBR_M2M_REGULAR_REPORT_1:
     case NGBR_M2M_REGULAR_REPORT_2:
     case NGBR_M2M_REGULAR_REPORT_3:
@@ -117,7 +117,7 @@ EpsBearer::GetPriority () const
       return 8;
     case NGBR_VIDEO_TCP_DEFAULT:
       return 9;
-    case NGBR_M2M_TRIGGERED_REPORT:
+    case NGBR_M2M_TRIGGER_REPORT:
     	return 2;
     case NGBR_M2M_REGULAR_REPORT_1:
     	return 10;
@@ -171,7 +171,7 @@ EpsBearer::GetPacketDelayBudgetMs () const
       return 300;
     case NGBR_VIDEO_TCP_DEFAULT:
       return 300;
-    case NGBR_M2M_TRIGGERED_REPORT:
+    case NGBR_M2M_TRIGGER_REPORT:
     	return 50;
     case NGBR_M2M_REGULAR_REPORT_1:
     	return 50;
@@ -225,7 +225,7 @@ EpsBearer::GetPacketErrorLossRate () const
       return 1.0e-6;
     case NGBR_VIDEO_TCP_DEFAULT:
       return 1.0e-6;
-    case NGBR_M2M_TRIGGERED_REPORT:
+    case NGBR_M2M_TRIGGER_REPORT:
     	return 1.0e-6;
     case NGBR_M2M_REGULAR_REPORT_1:
     case NGBR_M2M_REGULAR_REPORT_2:
