@@ -34,15 +34,19 @@
 
 using namespace ns3;
 
-void UlSchedulingCallback(std::map<uint16_t, int> *ulTbMap, std::string path, uint32_t frameNo,
+void UlSchedulingCallback(std::map<uint16_t, int> *ulTbMap, Time *startTime, std::string path, uint32_t frameNo,
 		uint32_t subframeNo, uint16_t rnti, uint8_t mcs, uint16_t size) {
+	if (Simulator::Now () < *startTime) {
+		return;
+	}
+
 	std::map<uint16_t, int>::iterator itMap = ulTbMap->find(rnti);
 	if (itMap != ulTbMap->end()) {
 		itMap->second += size;
 	} else {
 		ulTbMap->insert(std::pair<uint16_t, int>(rnti, size));
 	}
-//	std::cout << " Frame " << frameNo << " SubFrame " << subframeNo << " RNTI " << rnti << " MCS " << mcs << " TB " << size << std::endl;
+//	std::cout << " Frame " << frameNo << " SubFrame " << subframeNo << " RNTI " << rnti << " MCS " << (int)mcs << " TB " << size << std::endl;
 }
 
 std::vector<EpsBearer> GetAvailableM2mRegularEpsBearers(double simulationTime) {
@@ -56,11 +60,11 @@ std::vector<EpsBearer> GetAvailableM2mRegularEpsBearers(double simulationTime) {
 
 	simulationTime = simulationTime * 1000; // s => ms
 	response.push_back(allBearers[0]);
-	for (int i = 1; i < 11; i++) {
-		if (allBearers[i].GetPacketDelayBudgetMs() <= simulationTime) {
-			response.push_back(allBearers[i]);
-		}
-	}
+//	for (int i = 1; i < 11; i++) {
+//		if (allBearers[i].GetPacketDelayBudgetMs() <= simulationTime) {
+//			response.push_back(allBearers[i]);
+//		}
+//	}
 
 	return response;
 }
@@ -69,19 +73,24 @@ int main(int argc, char *argv[]) {
 	int scheduler = 0;
 	bool enableM2m = true;
 	uint16_t nM2mTrigger = 50;
-	uint16_t nM2mRegular = 150;
+	uint16_t nM2mRegular = 100;
 	uint16_t nH2h = 20;
 //	double simTime = 1.0;
 	double simTime = 0.5;
 	double minRadius = 375;
 	double maxRadius = 1000;
 	unsigned int bandwidth = 25; // n RB
-	double statsStartTime = 0.300;
+	Time statsStartTime = Seconds(0.300);
 	unsigned int packetSizeM2m = 125; // bytes
 	unsigned int packetSizeH2h = 1200; // bytes
 //	double interPacketM2mTrigger = 30; // s
 	double interPacketM2mTrigger = 0.025; // s
 	double interPacketH2h = 75; // ms
+	unsigned int minRBPerM2m = 3;
+	unsigned int minRBPerH2h = 3;
+//	double minPercentRBForM2m = (double)minRBPerM2m/bandwidth;
+	double minPercentRBForM2m = 0.0;
+	bool harqEnabled = true;
 
 	Config::SetDefault("ns3::LteEnbRrc::SrsPeriodicity", UintegerValue(320));
 	Config::SetDefault("ns3::LteEnbNetDevice::UlBandwidth", UintegerValue(bandwidth));
@@ -89,9 +98,12 @@ int main(int argc, char *argv[]) {
 
 	CommandLine cmd;
 	cmd.AddValue("scheduler", "Scheduler Type [0=M2M, 1=PF, 2=RR]", scheduler);
-	cmd.AddValue("nM2MTrigger", "Number of eNodeBs to M2M event driven", nM2mTrigger);
-	cmd.AddValue("nM2MRegular", "Number of eNodeBs to M2M time driven", nM2mRegular);
-	cmd.AddValue("nH2H", "Number of eNodeBs to H2H", nH2h);
+	cmd.AddValue("nM2MTrigger", "Number of UE to M2M event driven", nM2mTrigger);
+	cmd.AddValue("nM2MRegular", "Number of UE to M2M time driven", nM2mRegular);
+	cmd.AddValue("nH2H", "Number of UE to H2H", nH2h);
+	cmd.AddValue("minRBPerM2M", "min resource block per M2M UE", minRBPerM2m);
+	cmd.AddValue("minPercentRBForM2M", "min percentage of resource blocks available for M2M UE", minPercentRBForM2m);
+	cmd.AddValue("minRBPerH2H", "min resource block demand per H2H UE", minRBPerH2h);
 	cmd.AddValue("cellRadius", "Radius [m] of cell", maxRadius);
 	cmd.AddValue("simTime", "Total duration of the simulation [s])", simTime);
 	cmd.Parse(argc, argv);
@@ -116,17 +128,20 @@ int main(int argc, char *argv[]) {
 		// PF
 	case 1:
 		lteHelper->SetSchedulerType("ns3::M2mMacScheduler");
-		lteHelper->SetSchedulerAttribute("MinPercentRBForM2M", DoubleValue((double) (3) / bandwidth));
 		enableM2m = false;
 		break;
 		// M2M
 	case 0:
 	default:
 		lteHelper->SetSchedulerType("ns3::M2mMacScheduler");
-		lteHelper->SetSchedulerAttribute("MinPercentRBForM2M", DoubleValue((double) (3) / bandwidth));
+		lteHelper->SetSchedulerAttribute("MinPercentRBForM2M", DoubleValue(minPercentRBForM2m));
+		lteHelper->SetSchedulerAttribute("MinRBPerM2M", UintegerValue(minRBPerM2m));
+		lteHelper->SetSchedulerAttribute("MinRBPerH2H", UintegerValue(minRBPerH2h));
 		enableM2m = true;
 		break;
 	}
+	lteHelper->SetSchedulerAttribute("UlGrantMcs", UintegerValue(7));
+	lteHelper->SetSchedulerAttribute("HarqEnabled", BooleanValue(harqEnabled));
 
 	// Uncomment to enable logging
 //	lteHelper->EnableLogComponents();
@@ -310,7 +325,7 @@ int main(int argc, char *argv[]) {
 
 //	lteHelper->EnablePdcpTraces();
 //	lteHelper->EnableRlcTraces();
-	lteHelper->EnableUlMacTraces();
+//	lteHelper->EnableUlMacTraces();
 //	lteHelper->EnableUlPhyTraces();
 //	Ptr<RadioBearerStatsCalculator> rlcStats = lteHelper->GetRlcStats();
 //	rlcStats->SetAttribute("StartTime", TimeValue(Seconds(statsStartTime)));
@@ -318,9 +333,9 @@ int main(int argc, char *argv[]) {
 
 	std::map<uint16_t, int> ulTbMap;
 	Config::Connect("/NodeList/*/DeviceList/*/LteEnbMac/UlScheduling",
-			MakeBoundCallback(&UlSchedulingCallback, &ulTbMap));
+			MakeBoundCallback(&UlSchedulingCallback, &ulTbMap, &statsStartTime));
 
-	Simulator::Stop(Seconds(simTime + statsStartTime - 0.0001));
+	Simulator::Stop(Seconds(simTime - 0.0001) + statsStartTime);
 	Simulator::Run();
 
 	// GtkConfigStore config;

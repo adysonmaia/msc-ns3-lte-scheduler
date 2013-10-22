@@ -1896,7 +1896,6 @@ void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAlloc
 	uint16_t rbStart = rbMap.GetFirstAvailableRb();
 //	uint32_t nRbGroup = 0.5 * rbSize * (rbSize + 1) + 1;
 	uint32_t nRbGroup = 0.5 * rbSize * (rbSize + 1);
-	int defaultCqi = 7;
 
 	// Create de Matrix of possible allocations
 //	bool *mtx = new bool[nRbGroup*rbSize];
@@ -1957,18 +1956,18 @@ void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAlloc
 					}
 				}
 				if (rbgSize > 0) {
-					int cqi = defaultCqi;
+					int mcs = m_ulGrantMcs;
 					double spectralEfficiency = 0.0;
 					if (minSinr != NO_SINR && minSinr != DBL_MAX) {
 						// translate SINR -> cqi: WILD ACK: same as DL
 						spectralEfficiency = log2(
 								1 + (std::pow(10, minSinr / 10) / ((-std::log(5.0 * 0.00005)) / 1.5)));
-						int cqiTemp = m_amc->GetCqiFromSpectralEfficiency(spectralEfficiency);
-						if (cqiTemp != 0) {
-							cqi = cqiTemp;
+						int cqi = m_amc->GetCqiFromSpectralEfficiency(spectralEfficiency);
+						if (cqi != 0) {
+							mcs = m_amc->GetMcsFromCqi(cqi);
 						}
 					}
-					double achievableThr = 1000 * m_amc->GetTbSizeFromMcs(m_amc->GetMcsFromCqi(cqi), rbgSize)
+					double achievableThr = 1000 * m_amc->GetTbSizeFromMcs(mcs, rbgSize)
 							/ 8;
 					if (itStats != m_flowStatsUl.end()) {
 						if ((*itStats).second.lastAveragedThroughput > 0.0) {
@@ -1993,12 +1992,13 @@ void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAlloc
 		if (itUeChosen != ueAvailable.end()) {
 			int cqi =
 					(spectralEfficiencyChosen > 0.0) ?
-							m_amc->GetCqiFromSpectralEfficiency(spectralEfficiencyChosen) : defaultCqi;
+							m_amc->GetCqiFromSpectralEfficiency(spectralEfficiencyChosen) : 0;
+			int mcs = (cqi != 0) ? m_amc->GetMcsFromCqi(cqi) : m_ulGrantMcs;
 			UlDciListElement_s uldci;
 			uldci.m_rnti = *itUeChosen;
 			uldci.m_rbStart = rbStart + rbgChosenStart;
 			uldci.m_rbLen = rbgChosenSize;
-			uldci.m_mcs = m_amc->GetMcsFromCqi(cqi);
+			uldci.m_mcs = mcs;
 			uldci.m_tbSize = (m_amc->GetTbSizeFromMcs(uldci.m_mcs, uldci.m_rbLen) / 8);
 			uldci.m_ndi = 1;
 			uldci.m_cceIndex = 0;
