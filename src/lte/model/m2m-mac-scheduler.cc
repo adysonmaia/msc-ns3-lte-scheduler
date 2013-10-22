@@ -1926,8 +1926,9 @@ void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAlloc
 	std::vector<uint16_t> ueAvailable = ueList;
 	while (nRbgAvailable > 0 && ueAvailable.size() != 0) {
 		double maxValue = 0;
-		uint32_t rbgChosenSize, rbgChosenStart;
-		double spectralEfficiencyChosen;
+		uint32_t rbgChosenSize = 0;
+		uint32_t rbgChosenStart = 0;
+		double spectralEfficiencyChosen = 0.0;
 		std::vector<uint16_t>::iterator itUeChosen = ueAvailable.end();
 		std::vector<uint16_t>::iterator itUe = ueAvailable.begin();
 		while (itUe != ueAvailable.end()) {

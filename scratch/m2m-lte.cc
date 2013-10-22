@@ -34,6 +34,17 @@
 
 using namespace ns3;
 
+void UlSchedulingCallback(std::map<uint16_t, int> *ulTbMap, std::string path, uint32_t frameNo,
+		uint32_t subframeNo, uint16_t rnti, uint8_t mcs, uint16_t size) {
+	std::map<uint16_t, int>::iterator itMap = ulTbMap->find(rnti);
+	if (itMap != ulTbMap->end()) {
+		itMap->second += size;
+	} else {
+		ulTbMap->insert(std::pair<uint16_t, int>(rnti, size));
+	}
+//	std::cout << " Frame " << frameNo << " SubFrame " << subframeNo << " RNTI " << rnti << " MCS " << mcs << " TB " << size << std::endl;
+}
+
 std::vector<EpsBearer> GetAvailableM2mRegularEpsBearers(double simulationTime) {
 	std::vector<EpsBearer> response;
 	EpsBearer allBearers[] = { EpsBearer(EpsBearer::NGBR_M2M_REGULAR_REPORT_1), EpsBearer(
@@ -45,38 +56,39 @@ std::vector<EpsBearer> GetAvailableM2mRegularEpsBearers(double simulationTime) {
 
 	simulationTime = simulationTime * 1000; // s => ms
 	response.push_back(allBearers[0]);
-//	for (int i = 1; i < 11; i++) {
-//		if (allBearers[i].GetPacketDelayBudgetMs() <= simulationTime) {
-//			response.push_back(allBearers[i]);
-//		}
-//	}
+	for (int i = 1; i < 11; i++) {
+		if (allBearers[i].GetPacketDelayBudgetMs() <= simulationTime) {
+			response.push_back(allBearers[i]);
+		}
+	}
 
 	return response;
 }
 
 int main(int argc, char *argv[]) {
-	uint16_t nM2mTrigger = 0;
-	uint16_t nM2mRegular = 40;
+	int scheduler = 0;
+	bool enableM2m = true;
+	uint16_t nM2mTrigger = 50;
+	uint16_t nM2mRegular = 150;
 	uint16_t nH2h = 20;
 //	double simTime = 1.0;
 	double simTime = 0.5;
-	double minRadius = 0;
-	double maxRadius = 375;
+	double minRadius = 375;
+	double maxRadius = 1000;
 	unsigned int bandwidth = 25; // n RB
 	double statsStartTime = 0.300;
 	unsigned int packetSizeM2m = 125; // bytes
-//	unsigned int packetSizeH2h = 1200; // bytes
-	unsigned int packetSizeH2h = 1250; // bytes
+	unsigned int packetSizeH2h = 1200; // bytes
 //	double interPacketM2mTrigger = 30; // s
 	double interPacketM2mTrigger = 0.025; // s
 	double interPacketH2h = 75; // ms
-//	double interPacketH2h = 50; // ms
 
 	Config::SetDefault("ns3::LteEnbRrc::SrsPeriodicity", UintegerValue(320));
 	Config::SetDefault("ns3::LteEnbNetDevice::UlBandwidth", UintegerValue(bandwidth));
 	Config::SetDefault("ns3::LteEnbNetDevice::DlBandwidth", UintegerValue(bandwidth));
 
 	CommandLine cmd;
+	cmd.AddValue("scheduler", "Scheduler Type [0=M2M, 1=PF, 2=RR]", scheduler);
 	cmd.AddValue("nM2MTrigger", "Number of eNodeBs to M2M event driven", nM2mTrigger);
 	cmd.AddValue("nM2MRegular", "Number of eNodeBs to M2M time driven", nM2mRegular);
 	cmd.AddValue("nH2H", "Number of eNodeBs to H2H", nH2h);
@@ -95,10 +107,26 @@ int main(int argc, char *argv[]) {
 	lteHelper->SetEpcHelper(epcHelper);
 	Ptr<Node> pgw = epcHelper->GetPgwNode();
 
-	// Default scheduler is PF
-	lteHelper->SetSchedulerType("ns3::M2mMacScheduler");
-//	lteHelper->SetSchedulerAttribute("MinPercentRBForM2M", DoubleValue((double)(3)/bandwidth));
-	lteHelper->SetSchedulerAttribute("MinPercentRBForM2M", DoubleValue(0.0));
+	switch (scheduler) {
+	// RR
+	case 2:
+		lteHelper->SetSchedulerType("ns3::RrFfMacScheduler");
+		enableM2m = false;
+		break;
+		// PF
+	case 1:
+		lteHelper->SetSchedulerType("ns3::M2mMacScheduler");
+		lteHelper->SetSchedulerAttribute("MinPercentRBForM2M", DoubleValue((double) (3) / bandwidth));
+		enableM2m = false;
+		break;
+		// M2M
+	case 0:
+	default:
+		lteHelper->SetSchedulerType("ns3::M2mMacScheduler");
+		lteHelper->SetSchedulerAttribute("MinPercentRBForM2M", DoubleValue((double) (3) / bandwidth));
+		enableM2m = true;
+		break;
+	}
 
 	// Uncomment to enable logging
 //	lteHelper->EnableLogComponents();
@@ -223,6 +251,8 @@ int main(int argc, char *argv[]) {
 
 	// M2M Trigger Report
 	EpsBearer bearerM2mTrigger = EpsBearer(EpsBearer::NGBR_M2M_TRIGGER_REPORT);
+	if (!enableM2m)
+		bearerM2mTrigger = EpsBearer(EpsBearer::NGBR_VIDEO_TCP_DEFAULT);
 	Ptr<EpcTft> tftM2mTrigger = Create<EpcTft>();
 	EpcTft::PacketFilter pfM2mTrigger;
 	pfM2mTrigger.remoteAddress = remoteHostAddr;
@@ -253,8 +283,10 @@ int main(int argc, char *argv[]) {
 		EpcTft::PacketFilter pf;
 		EpsBearer bearer = bearerM2mRegularList.at(u % bearerM2mRegularList.size());
 		int port = remoteM2mRegularPort + (u % bearerM2mRegularList.size());
-//		EpsBearer bearer = EpsBearer(EpsBearer::NGBR_VIDEO_TCP_DEFAULT);
-//		int port = remoteM2mRegularPort;
+		if (!enableM2m) {
+			bearer = EpsBearer(EpsBearer::NGBR_VIDEO_TCP_DEFAULT);
+			port = remoteM2mRegularPort;
+		}
 		pf.remoteAddress = remoteHostAddr;
 		pf.remotePortStart = port;
 		pf.remotePortEnd = port;
@@ -277,11 +309,16 @@ int main(int argc, char *argv[]) {
 	clientApps.Start(Seconds(0.01));
 
 //	lteHelper->EnablePdcpTraces();
-	lteHelper->EnableRlcTraces();
+//	lteHelper->EnableRlcTraces();
 	lteHelper->EnableUlMacTraces();
-	Ptr<RadioBearerStatsCalculator> rlcStats = lteHelper->GetRlcStats();
-	rlcStats->SetAttribute("StartTime", TimeValue(Seconds(statsStartTime)));
-	rlcStats->SetAttribute("EpochDuration", TimeValue(Seconds(simTime)));
+//	lteHelper->EnableUlPhyTraces();
+//	Ptr<RadioBearerStatsCalculator> rlcStats = lteHelper->GetRlcStats();
+//	rlcStats->SetAttribute("StartTime", TimeValue(Seconds(statsStartTime)));
+//	rlcStats->SetAttribute("EpochDuration", TimeValue(Seconds(simTime)));
+
+	std::map<uint16_t, int> ulTbMap;
+	Config::Connect("/NodeList/*/DeviceList/*/LteEnbMac/UlScheduling",
+			MakeBoundCallback(&UlSchedulingCallback, &ulTbMap));
 
 	Simulator::Stop(Seconds(simTime + statsStartTime - 0.0001));
 	Simulator::Run();
@@ -289,43 +326,46 @@ int main(int argc, char *argv[]) {
 	// GtkConfigStore config;
 	// config.ConfigureAttributes ();
 
-	std::cout << "UL - Test with " << ueAllDevs.GetN() << " user(s)" << std::endl;
+	std::cout << "UL - Test with " << ueAllDevs.GetN() << " user(s). Scheduler " << scheduler << std::endl;
 	double avgThroughput = 0.0;
 	for (unsigned int i = 0; i < ueH2hDevs.GetN(); i++) {
-		// get the imsi
-		uint64_t imsi = ueH2hDevs.Get(i)->GetObject<LteUeNetDevice>()->GetImsi();
-		// get the lcId
-		uint8_t lcId = 4;
-		uint64_t dataTx = rlcStats->GetUlTxData(imsi, lcId);
-		avgThroughput += (double) dataTx / simTime;
-		std::cout << "H2H User " << i << " imsi " << imsi << " bytes txed " << dataTx << "  thr "
-				<< (double) dataTx / simTime << std::endl;
+		int tb = 0;
+		std::map<uint16_t, int>::iterator it = ulTbMap.find(
+				ueH2hDevs.Get(i)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti());
+		if (it != ulTbMap.end())
+			tb = it->second;
+		avgThroughput += (double) tb / simTime;
+//		std::cout << "H2H User " << " imsi " << imsi << " tb " << tb << "  thr " << (double) tb / simTime
+//				<< std::endl;
 	}
-	std::cout << "\tH2H Avg Throughput " << (avgThroughput/ueH2hDevs.GetN()) << std::endl;
+	std::cout << "\tH2H Avg (" << ueH2hDevs.GetN() << ") Throughput " << (avgThroughput / ueH2hDevs.GetN())
+			<< " Bps" << std::endl;
 	avgThroughput = 0.0;
 	for (unsigned int i = 0; i < ueM2mTriggerDevs.GetN(); i++) {
-		// get the imsi
-		uint64_t imsi = ueM2mTriggerDevs.Get(i)->GetObject<LteUeNetDevice>()->GetImsi();
-		// get the lcId
-		uint8_t lcId = 4;
-		uint64_t dataTx = rlcStats->GetUlTxData(imsi, lcId);
-		avgThroughput += (double) dataTx / simTime;
-		std::cout << "M2M Trigger User " << i << " imsi " << imsi << " bytes txed " << dataTx << "  thr "
-				<< (double) dataTx / simTime << std::endl;
+		int tb = 0;
+		std::map<uint16_t, int>::iterator it = ulTbMap.find(
+				ueM2mTriggerDevs.Get(i)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti());
+		if (it != ulTbMap.end())
+			tb = it->second;
+		avgThroughput += (double) tb / simTime;
+//		std::cout << "M2M Trigger User " << " imsi " << imsi << " tb " << tb << "  thr "
+//				<< (double) tb / simTime << std::endl;
 	}
-	std::cout << "\tM2M Trigger Avg Throughput " << (avgThroughput/ueM2mTriggerDevs.GetN()) << std::endl;
+	std::cout << "\tM2M Trigger (" << ueM2mTriggerDevs.GetN() << ") Avg Throughput "
+			<< (avgThroughput / ueM2mTriggerDevs.GetN()) << " Bps" << std::endl;
 	avgThroughput = 0.0;
 	for (unsigned int i = 0; i < ueM2mRegularDevs.GetN(); i++) {
-		// get the imsi
-		uint64_t imsi = ueM2mRegularDevs.Get(i)->GetObject<LteUeNetDevice>()->GetImsi();
-		// get the lcId
-		uint8_t lcId = 4;
-		uint64_t dataTx = rlcStats->GetUlTxData(imsi, lcId);
-		avgThroughput += (double) dataTx / simTime;
-		std::cout << "M2M Regular User " << i << " imsi " << imsi << " bytes txed " << dataTx << "  thr "
-				<< (double) dataTx / simTime << std::endl;
+		int tb = 0;
+		std::map<uint16_t, int>::iterator it = ulTbMap.find(
+				ueM2mRegularDevs.Get(i)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti());
+		if (it != ulTbMap.end())
+			tb = it->second;
+		avgThroughput += (double) tb / simTime;
+//		std::cout << "M2M Regular User " << " imsi " << imsi << " tb " << tb << "  thr "
+//				<< (double) tb / simTime << std::endl;
 	}
-	std::cout << "\tM2M Regular Avg Throughput " << (avgThroughput/ueM2mRegularDevs.GetN()) << std::endl;
+	std::cout << "\tM2M Regular (" << ueM2mRegularDevs.GetN() << ") Avg Throughput "
+			<< (avgThroughput / ueM2mRegularDevs.GetN()) << " Bps" << std::endl;
 
 	Simulator::Destroy();
 	return 0;
