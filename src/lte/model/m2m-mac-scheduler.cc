@@ -584,7 +584,8 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 	std::vector<struct RachListElement_s>::iterator itRach;
 	for (itRach = m_rachList.begin(); itRach != m_rachList.end(); itRach++) {
 		NS_ASSERT_MSG(
-				m_amc->GetTbSizeFromMcs(m_ulGrantMcs, m_cschedCellConfig.m_ulBandwidth) > (*itRach).m_estimatedSize,
+				m_amc->GetTbSizeFromMcs(m_ulGrantMcs, m_cschedCellConfig.m_ulBandwidth)
+						> (*itRach).m_estimatedSize,
 				" Default UL Grant MCS does not allow to send RACH messages");
 		BuildRarListElement_s newRar;
 		newRar.m_rnti = (*itRach).m_rnti;
@@ -1346,7 +1347,7 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 
 		if (m_harqOn) {
 			bool isHarq = false;
-			for (std::vector<uint16_t>::iterator itHarq = h2hList.begin(); itHarq != h2hList.end();
+			for (std::vector<uint16_t>::iterator itHarq = harqList.begin(); itHarq != harqList.end();
 					itHarq++) {
 				if ((*itHarq) == rnti) {
 					isHarq = true;
@@ -1547,8 +1548,7 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 
 	if (rbMap.GetSize() != rbMap.GetAvailableRbSize()) {
 		NS_LOG_FUNCTION(
-				this << " Ul Frame no. " << (params.m_sfnSf >> 4) << " subframe no. "
-				<< (0xF & params.m_sfnSf));
+				this << " Ul Frame no. " << (params.m_sfnSf >> 4) << " subframe no. " << (0xF & params.m_sfnSf)); NS_LOG_INFO(this << "RB Available: " << nRbAvailable << ", H2H RB Demand: " << h2hRbDemand << ", H2H RB: " << nH2hRb << ", M2M RB Demand: " << m2mMinRbDemand);
 	}
 
 	// Update global UE stats
@@ -1568,10 +1568,9 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 
 		if ((*itStats).second.lastTtiResourcesAllocated > 0) {
 			NS_LOG_INFO(
-					this << " UL UE " << (*itStats).first << " Last bytes "
-					<< (*itStats).second.lastTtiBytesTrasmitted << " Average throughput "
-					<< (*itStats).second.lastAveragedThroughput << " RB "
-					<< (*itStats).second.lastTtiResourcesAllocated);
+					this << " UL UE" << ((*itStats).second.isM2m ? " M2M " : " H2H ") << (*itStats).first << " Last bytes "
+					<< (*itStats).second.lastTtiBytesTrasmitted << " Average throughput " << (*itStats).second.lastAveragedThroughput
+					<< " RB " << (*itStats).second.lastTtiResourcesAllocated);
 		}
 
 		(*itStats).second.lastTtiBytesTrasmitted = 0;
@@ -1895,25 +1894,33 @@ void M2mMacScheduler::SchedUlHarq(const std::vector<uint16_t> &ueList, M2mRbAllo
 void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap,
 		const uint16_t rbSize, struct FfMacSchedSapUser::SchedUlConfigIndParameters &response) {
 	uint16_t rbStart = rbMap.GetFirstAvailableRb();
-	uint32_t nRbGroup = 0.5 * rbSize * (rbSize + 1) + 1;
+//	uint32_t nRbGroup = 0.5 * rbSize * (rbSize + 1) + 1;
+	uint32_t nRbGroup = 0.5 * rbSize * (rbSize + 1);
+	int defaultCqi = 7;
 
 	// Create de Matrix of possible allocations
 //	bool *mtx = new bool[nRbGroup*rbSize];
 	std::vector<std::vector<bool> > mtx;
 	mtx.resize(nRbGroup, std::vector<bool>(rbSize, false));
 
-	uint32_t groupSize = 0;
+//	uint32_t groupSize = 0;
+	uint32_t groupSize = 1;
 	uint32_t groupStart = 0;
 	for (uint32_t c = 0; c < nRbGroup; c++) {
 		for (uint32_t r = 0; r < rbSize; r++) {
 			bool value = (r >= groupStart && r < groupStart + groupSize) ? true : false;
 //			mtx[c * nRbGroup + r] = value;
 			mtx[c][r] = value;
-			if (r == nRbGroup - 1 && (value || c == 0)) {
+//			if ((r + 1 == rbSize) && (value || c == 0)) {
+			if ((r + 1 == rbSize) && value) {
 				groupSize++;
-				groupStart = 0;
+				groupStart = rbSize;
 			}
 		}
+		if (groupStart < rbSize)
+			groupStart++;
+		else
+			groupStart = 0;
 	}
 	uint32_t nRbgAvailable = nRbGroup;
 	std::vector<uint16_t> ueAvailable = ueList;
@@ -1926,18 +1933,19 @@ void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAlloc
 		while (itUe != ueAvailable.end()) {
 			std::map<uint16_t, std::vector<double> >::iterator itCqi = m_ueCqi.find(*itUe);
 			std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(*itUe);
-			if (itCqi != m_ueCqi.end() && itStats != m_flowStatsUl.end()) {
-				for (uint32_t c = 0; c < nRbGroup; c++) {
-					uint32_t rbgSize = 0;
-					uint32_t rbgStart = rbSize;
-					double minSinr = DBL_MAX;
-					double value = 0.0;
-					for (uint32_t r = 0; r < rbSize; r++) {
+
+			for (uint32_t c = 0; c < nRbGroup; c++) {
+				uint32_t rbgSize = 0;
+				uint32_t rbgStart = rbSize;
+				double minSinr = DBL_MAX;
+				double value = 0.0;
+				for (uint32_t r = 0; r < rbSize; r++) {
 //						if (mtx[c * nRbGroup + r]) {
-						if (mtx[c][r]) {
-							if (rbgStart == rbSize)
-								rbgStart = r;
-							rbgSize++;
+					if (mtx[c][r]) {
+						if (rbgStart == rbSize)
+							rbgStart = r;
+						rbgSize++;
+						if (itCqi != m_ueCqi.end()) {
 							double sinr = (*itCqi).second.at(r + rbStart);
 							if (sinr == NO_SINR) {
 								sinr = EstimateUlSinr(*itUe, r + rbStart);
@@ -1946,34 +1954,45 @@ void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAlloc
 								minSinr = sinr;
 						}
 					}
-					if (rbgSize > 0) {
+				}
+				if (rbgSize > 0) {
+					int cqi = defaultCqi;
+					double spectralEfficiency = 0.0;
+					if (minSinr != NO_SINR && minSinr != DBL_MAX) {
 						// translate SINR -> cqi: WILD ACK: same as DL
-						double s = log2(
+						spectralEfficiency = log2(
 								1 + (std::pow(10, minSinr / 10) / ((-std::log(5.0 * 0.00005)) / 1.5)));
-						int cqi = m_amc->GetCqiFromSpectralEfficiency(s);
-						if (cqi != 0) {
-							double achievableThr = 1000
-									* m_amc->GetTbSizeFromMcs(m_amc->GetMcsFromCqi(cqi), rbgSize) / 8;
-							if ((*itStats).second.lastAveragedThroughput > 0.0) {
-								value = achievableThr / (*itStats).second.lastAveragedThroughput;
-							} else {
-								value = achievableThr;
-							}
-							if (value > maxValue || maxValue == 0.0) {
-								maxValue = value;
-								itUeChosen = itUe;
-								rbgChosenStart = rbgStart;
-								rbgChosenSize = rbgSize;
-								spectralEfficiencyChosen = s;
-							}
+						int cqiTemp = m_amc->GetCqiFromSpectralEfficiency(spectralEfficiency);
+						if (cqiTemp != 0) {
+							cqi = cqiTemp;
 						}
+					}
+					double achievableThr = 1000 * m_amc->GetTbSizeFromMcs(m_amc->GetMcsFromCqi(cqi), rbgSize)
+							/ 8;
+					if (itStats != m_flowStatsUl.end()) {
+						if ((*itStats).second.lastAveragedThroughput > 0.0) {
+							value = achievableThr / (*itStats).second.lastAveragedThroughput;
+						} else {
+							value = achievableThr;
+						}
+					} else {
+						value = achievableThr;
+					}
+					if (value > maxValue || maxValue == 0.0) {
+						maxValue = value;
+						itUeChosen = itUe;
+						rbgChosenStart = rbgStart;
+						rbgChosenSize = rbgSize;
+						spectralEfficiencyChosen = spectralEfficiency;
 					}
 				}
 			}
 			itUe++;
 		}
 		if (itUeChosen != ueAvailable.end()) {
-			int cqi = m_amc->GetCqiFromSpectralEfficiency(spectralEfficiencyChosen);
+			int cqi =
+					(spectralEfficiencyChosen > 0.0) ?
+							m_amc->GetCqiFromSpectralEfficiency(spectralEfficiencyChosen) : defaultCqi;
 			UlDciListElement_s uldci;
 			uldci.m_rnti = *itUeChosen;
 			uldci.m_rbStart = rbStart + rbgChosenStart;
@@ -2000,7 +2019,7 @@ void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAlloc
 
 			for (uint32_t c = 0; c < nRbGroup; c++) {
 				bool intercepts = false;
-				for (uint32_t r = uldci.m_rbStart; r < uldci.m_rbStart + uldci.m_rbLen; r++) {
+				for (uint32_t r = rbgChosenStart; r < rbgChosenStart + rbgChosenSize; r++) {
 					if (mtx[c][r]) {
 //					if (mtx[c * nRbGroup + r]) {
 						intercepts = true;
