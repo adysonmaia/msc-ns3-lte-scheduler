@@ -371,6 +371,7 @@ void M2mMacScheduler::DoCschedUeReleaseReq(
 	m_flowStatsDl.erase(params.m_rnti);
 	m_flowStatsUl.erase(params.m_rnti);
 	m_ceBsrRxed.erase(params.m_rnti);
+	m_ceBsrRxedTime.erase(params.m_rnti);
 	m_ueUlQci.erase(params.m_rnti);
 	m_m2mGrantTimers.erase(params.m_rnti);
 	std::map<LteFlowId_t, FfMacSchedSapProvider::SchedDlRlcBufferReqParameters>::iterator it =
@@ -1164,6 +1165,8 @@ void M2mMacScheduler::DoSchedUlMacCtrlInfoReq(
 		const struct FfMacSchedSapProvider::SchedUlMacCtrlInfoReqParameters& params) {
 //	NS_LOG_FUNCTION (this);
 	std::map<uint16_t, uint32_t>::iterator it;
+	std::map<uint16_t, Time>::iterator itTime;
+	Time now = Simulator::Now();
 	for (unsigned int i = 0; i < params.m_macCeList.size(); i++) {
 		if (params.m_macCeList.at(i).m_macCeType == MacCeListElement_s::BSR) {
 			// buffer status report
@@ -1188,6 +1191,13 @@ void M2mMacScheduler::DoSchedUlMacCtrlInfoReq(
 			} else {
 				// update the buffer size value
 				(*it).second = buffer;
+			}
+
+			itTime = m_ceBsrRxedTime.find(rnti);
+			if (itTime == m_ceBsrRxedTime.end()) {
+				m_ceBsrRxedTime.insert(std::pair<uint16_t, Time>(rnti, Time(now)));
+			} else {
+				(*itTime).second = now;
 			}
 		}
 	}
@@ -1331,6 +1341,8 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 	uint16_t h2hRbDemand = 0;
 	double m2mMaxLastAveragedThroughput = 0;
 	uint16_t m2mMaxDelay = 0;
+	std::map<uint16_t, uint16_t> m2mCurrentDelay;
+	Time now = Simulator::Now();
 
 	if (m_harqOn && params.m_ulInfoList.size() > 0) {
 		for (std::vector<UlInfoListElement_s>::const_iterator itUlInfo = params.m_ulInfoList.begin();
@@ -1364,6 +1376,7 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 
 		std::map<uint16_t, EpsBearer::Qci>::iterator itQci = m_ueUlQci.find(rnti);
 		std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(rnti);
+		std::map<uint16_t, Time>::iterator itBsrTime = m_ceBsrRxedTime.find(rnti);
 		if (itQci != m_ueUlQci.end() && (*itQci).second > EpsBearer::NGBR_VIDEO_TCP_DEFAULT) {
 			std::map<uint16_t, uint32_t>::iterator itGrant = m_m2mGrantTimers.find(rnti);
 			if (itGrant != m_m2mGrantTimers.end() && (*itGrant).second > 0) {
@@ -1377,6 +1390,15 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 				m2mMaxLastAveragedThroughput = (*itStats).second.lastAveragedThroughput;
 			}
 			uint16_t delay = EpsBearer((*itQci).second).GetPacketDelayBudgetMs();
+			if (itBsrTime != m_ceBsrRxedTime.end()) {
+				uint32_t timeDiff = (now - (*itBsrTime).second).GetMilliSeconds();
+				if (delay <= timeDiff) {
+					delay = 0;
+				} else {
+					delay -= timeDiff;
+				}
+			}
+			m2mCurrentDelay.insert(std::pair<uint16_t, uint16_t>(rnti, delay));
 			if (delay > m2mMaxDelay) {
 				m2mMaxDelay = delay;
 			}
@@ -1429,13 +1451,13 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 	while (itM2m != m2mList.end()) {
 		uint16_t rnti = *itM2m;
 		std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(rnti);
-		std::map<uint16_t, EpsBearer::Qci>::iterator itQci = m_ueUlQci.find(rnti);
+		std::map<uint16_t, uint16_t>::iterator itDelay = m2mCurrentDelay.find(rnti);
 		double priority = 2;
 		if (itStats != m_flowStatsUl.end() && m2mMaxLastAveragedThroughput > 0) {
 			priority -= (*itStats).second.lastAveragedThroughput / m2mMaxLastAveragedThroughput;
 		}
-		if (itQci != m_ueUlQci.end() && m2mMaxDelay > 0) {
-			priority -= EpsBearer((*itQci).second).GetPacketDelayBudgetMs() / m2mMaxDelay;
+		if (itDelay != m2mCurrentDelay.end() && m2mMaxDelay > 0) {
+			priority -= (*itDelay).second / m2mMaxDelay;
 		}
 		priority = std::max(priority, 0.0);
 		priorityMap.insert(std::pair<uint16_t, double>(rnti, priority));
@@ -1467,6 +1489,7 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 		std::map<uint16_t, double>::iterator itValue = m2mPrioValues.begin();
 		while (itValue != m2mPrioValues.end()) {
 			uint16_t rnti = (*itValue).first;
+			double spectralEfficiency = 0.0;
 			std::map<uint16_t, std::vector<double> >::iterator itCqi = m_ueCqi.find(rnti);
 			if (itCqi != m_ueCqi.end()) {
 				double minSinr = DBL_MAX;
@@ -1479,30 +1502,23 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 						minSinr = sinr;
 					}
 				}
-				double spectralEfficiency = log2(
+				spectralEfficiency = log2(
 						1.0 + (std::pow(10, minSinr / 10) / ((-std::log(5.0 * 0.00005)) / 1.5)));
-				int cqi = m_amc->GetCqiFromSpectralEfficiency(spectralEfficiency);
-				(*itValue).second = spectralEfficiency;
-				if (cqi != 0) {
-					if (spectralEfficiency >= maxPriority.second) {
-						maxPriority.first = rnti;
-						maxPriority.second = spectralEfficiency;
-					}
-					itValue++;
-				} else {
-					m2mPrioValues.erase(itValue++);
-				}
-			} else {
-				m2mPrioValues.erase(itValue++);
 			}
+			if (spectralEfficiency >= maxPriority.second) {
+				maxPriority.first = rnti;
+				maxPriority.second = spectralEfficiency;
+			}
+			itValue++;
 		}
 		if (maxPriority.first != 0) {
-			int cqi = m_amc->GetCqiFromSpectralEfficiency(maxPriority.second);
+			int cqi = (maxPriority.second > 0) ? m_amc->GetCqiFromSpectralEfficiency(maxPriority.second) : 0;
+			int mcs = (cqi != 0) ? m_amc->GetMcsFromCqi(cqi) : m_ulGrantMcs;
 			UlDciListElement_s uldci;
 			uldci.m_rnti = maxPriority.first;
 			uldci.m_rbStart = rbStart;
 			uldci.m_rbLen = m_minM2mRb;
-			uldci.m_mcs = m_amc->GetMcsFromCqi(cqi);
+			uldci.m_mcs = mcs;
 			uldci.m_tbSize = m_amc->GetTbSizeFromMcs(uldci.m_mcs, m_minM2mRb) / 8;
 			uldci.m_ndi = 1;
 			uldci.m_cceIndex = 0;
@@ -1544,7 +1560,7 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 		}
 	}
 
-	UpdateM2MAccessGrantTimers(m2mList, rbMap);
+	UpdateM2MAccessGrantTimers(m2mList, rbMap, m2mCurrentDelay);
 
 //	if (rbMap.GetSize() != rbMap.GetAvailableRbSize()) {
 //		NS_LOG_FUNCTION(
@@ -1967,8 +1983,7 @@ void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAlloc
 							mcs = m_amc->GetMcsFromCqi(cqi);
 						}
 					}
-					double achievableThr = 1000 * m_amc->GetTbSizeFromMcs(mcs, rbgSize)
-							/ 8;
+					double achievableThr = 1000 * m_amc->GetTbSizeFromMcs(mcs, rbgSize) / 8;
 					if (itStats != m_flowStatsUl.end()) {
 						if ((*itStats).second.lastAveragedThroughput > 0.0) {
 							value = achievableThr / (*itStats).second.lastAveragedThroughput;
@@ -2072,109 +2087,6 @@ void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAlloc
 //	delete[] mtx;
 }
 
-/*
- void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap,
- const uint16_t rbSize, struct FfMacSchedSapUser::SchedUlConfigIndParameters &response) {
- int nflows = ueList.size();
- uint16_t rbStart = rbMap.GetFirstAvailableRb();
- uint16_t rbEnd = rbStart + rbSize;
- // at least 3 rbg per flow to ensure TxOpportunity >= 7 bytes
- uint16_t minRbPerFlow = 3;
-
- // Divide the remaining resources equally among the active users starting from the subsequent one served last scheduling trigger
- uint16_t rbPerFlow = rbSize / nflows;
- if (rbPerFlow < minRbPerFlow) {
- rbPerFlow = minRbPerFlow; // at least 3 rbg per flow (till available resource) to ensure TxOpportunity >= 7 bytes
- }
-
- std::vector<uint16_t>::const_iterator it = ueList.begin();
- while (it != ueList.end() && rbStart + minRbPerFlow < rbEnd) {
- if (rbStart + rbPerFlow > rbEnd) {
- rbPerFlow = minRbPerFlow;
- }
- if (rbStart + rbPerFlow + minRbPerFlow > rbEnd) {
- rbPerFlow = rbEnd - rbStart;
- }
- if (rbMap.IsFree(rbStart, rbPerFlow)) {
- UlDciListElement_s uldci;
- uldci.m_rnti = *it;
- uldci.m_rbStart = rbStart;
- uldci.m_rbLen = rbPerFlow;
-
- std::map<uint16_t, std::vector<double> >::iterator itCqi = m_ueCqi.find(*it);
- if (itCqi != m_ueCqi.end()) {
- // take the lowest CQI value (worst RB)
- double minSinr = (*itCqi).second.at(uldci.m_rbStart);
- if (minSinr == NO_SINR) {
- minSinr = EstimateUlSinr(*it, uldci.m_rbStart);
- }
- for (uint16_t i = uldci.m_rbStart; i < uldci.m_rbStart + uldci.m_rbLen; i++) {
- double sinr = (*itCqi).second.at(i);
- if (sinr == NO_SINR) {
- sinr = EstimateUlSinr(*it, i);
- }
- if ((*itCqi).second.at(i) < minSinr) {
- minSinr = (*itCqi).second.at(i);
- }
- }
- // translate SINR -> cqi: WILD ACK: same as DL
- double s = log2(1 + (std::pow(10, minSinr / 10) / ((-std::log(5.0 * 0.00005)) / 1.5)));
- int cqi = m_amc->GetCqiFromSpectralEfficiency(s);
- if (cqi != 0) {
- uldci.m_mcs = m_amc->GetMcsFromCqi(cqi);
- uldci.m_tbSize = (m_amc->GetTbSizeFromMcs(uldci.m_mcs, rbPerFlow) / 8);
- uldci.m_ndi = 1;
- uldci.m_cceIndex = 0;
- uldci.m_aggrLevel = 1;
- uldci.m_ueTxAntennaSelection = 3; // antenna selection OFF
- uldci.m_hopping = false;
- uldci.m_n2Dmrs = 0;
- uldci.m_tpc = 0; // no power control
- uldci.m_cqiRequest = false; // only period CQI at this stage
- uldci.m_ulIndex = 0; // TDD parameter
- uldci.m_dai = 1; // TDD parameter
- uldci.m_freqHopping = 0;
- uldci.m_pdcchPowerOffset = 0; // not used
-
- UpdateUlRlcBufferInfo(uldci.m_rnti, uldci.m_tbSize);
- rbMap.Allocate(uldci.m_rnti, uldci.m_rbStart, uldci.m_rbLen);
- response.m_dciList.push_back(uldci);
- rbStart += uldci.m_rbLen;
-
- // store DCI for HARQ_PERIOD
- if (m_harqOn == true) {
- uint8_t harqId = 0;
- std::map<uint16_t, uint8_t>::iterator itProcId;
- itProcId = m_ulHarqCurrentProcessId.find(uldci.m_rnti);
- if (itProcId == m_ulHarqCurrentProcessId.end()) {
- NS_FATAL_ERROR("No info find in HARQ buffer for UE " << uldci.m_rnti);
- }
- harqId = (*itProcId).second;
- std::map<uint16_t, UlHarqProcessesDciBuffer_t>::iterator itDci =
- m_ulHarqProcessesDciBuffer.find(uldci.m_rnti);
- if (itDci == m_ulHarqProcessesDciBuffer.end()) {
- NS_FATAL_ERROR(
- "Unable to find RNTI entry in UL DCI HARQ buffer for RNTI " << uldci.m_rnti);
- }
- (*itDci).second.at(harqId) = uldci;
- }
-
- std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(uldci.m_rnti);
- std::map<uint16_t, uint32_t>::iterator itBsr = m_ceBsrRxed.find(uldci.m_rnti);
- if (itStats != m_flowStatsUl.end()) {
- (*itStats).second.lastTtiBytesTrasmitted = uldci.m_tbSize;
- (*itStats).second.lastTtiResourcesAllocated = uldci.m_rbLen;
- (*itStats).second.lastTtiBsrReceived =
- (itBsr != m_ceBsrRxed.end()) ? (*itBsr).second : uldci.m_tbSize;
- }
- }
- }
- }
- it++;
- }
- }
- */
-
 void M2mMacScheduler::RefreshM2MAccessGrantTimers() {
 	for (std::map<uint16_t, uint32_t>::iterator it = m_m2mGrantTimers.begin(); it != m_m2mGrantTimers.end();
 			it++) {
@@ -2185,19 +2097,27 @@ void M2mMacScheduler::RefreshM2MAccessGrantTimers() {
 }
 
 void M2mMacScheduler::UpdateM2MAccessGrantTimers(const std::vector<uint16_t> &ueList,
-		const M2mRbAllocationMap &rbMap) {
+		const M2mRbAllocationMap &rbMap, const std::map<uint16_t, uint16_t> &delayMap) {
 	for (std::vector<uint16_t>::const_iterator itM2m = ueList.begin(); itM2m != ueList.end(); itM2m++) {
 		if (!rbMap.HasResources(*itM2m)) {
-			std::map<uint16_t, EpsBearer::Qci>::iterator itQci = m_ueUlQci.find(*itM2m);
+			std::map<uint16_t, uint16_t>::const_iterator itDelay = delayMap.find(*itM2m);
 			std::map<uint16_t, uint32_t>::iterator itGrant = m_m2mGrantTimers.find(*itM2m);
-			if (itQci != m_ueUlQci.end()) {
-				uint16_t delay = EpsBearer((*itQci).second).GetPacketDelayBudgetMs();
-				uint32_t waitTime = m_uniformRandom->GetInteger(0, delay / 2);
-				if (itGrant != m_m2mGrantTimers.end()) {
-					(*itGrant).second = waitTime;
-				} else {
-					m_m2mGrantTimers.insert(std::pair<uint16_t, uint32_t>(*itM2m, waitTime));
+			uint32_t waitTime = 0;
+
+			if (itDelay != delayMap.end()) {
+				waitTime = m_uniformRandom->GetInteger(0, (*itDelay).second / 2);
+			} else {
+				std::map<uint16_t, EpsBearer::Qci>::iterator itQci = m_ueUlQci.find(*itM2m);
+				if (itQci != m_ueUlQci.end()) {
+					uint16_t delay = EpsBearer((*itQci).second).GetPacketDelayBudgetMs();
+					waitTime = m_uniformRandom->GetInteger(0, delay / 2);
 				}
+			}
+
+			if (itGrant != m_m2mGrantTimers.end()) {
+				(*itGrant).second = waitTime;
+			} else {
+				m_m2mGrantTimers.insert(std::pair<uint16_t, uint32_t>(*itM2m, waitTime));
 			}
 		}
 	}

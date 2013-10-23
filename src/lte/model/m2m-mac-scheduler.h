@@ -115,7 +115,8 @@ private:
 	void SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize,
 			struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
 	void RefreshM2MAccessGrantTimers();
-	void UpdateM2MAccessGrantTimers(const std::vector<uint16_t> &ueList, const M2mRbAllocationMap &rbMap);
+	void UpdateM2MAccessGrantTimers(const std::vector<uint16_t> &ueList, const M2mRbAllocationMap &rbMap,
+			const std::map<uint16_t, uint16_t> &delayMap);
 private:
 	Ptr<LteAmc> m_amc;
 
@@ -206,6 +207,7 @@ private:
 	std::map<uint16_t, M2mRbAllocationMap> m_ulAllocationMaps;
 	std::map<uint16_t, EpsBearer::Qci> m_ueUlQci;
 	std::map<uint16_t, uint32_t> m_m2mGrantTimers;
+	std::map<uint16_t, Time> m_ceBsrRxedTime;
 	uint16_t m_minH2hRb;
 	uint16_t m_minM2mRb;
 	double m_minPercentM2mRb;
@@ -262,7 +264,7 @@ public:
 	bool HasResources(const uint16_t rnti) const;
 	uint16_t GetRnti(const uint16_t index) const;
 	uint16_t GetSize() const;
-	uint16_t GetAvailableRbSize() const ;
+	uint16_t GetAvailableRbSize() const;
 	uint16_t GetFirstAvailableRb() const;
 	void Clear();
 private:

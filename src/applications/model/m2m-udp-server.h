@@ -64,6 +64,8 @@ public:
 	Time GetReceivedSumDelay() const;
 
 	Time GetMaxPacketDelay() const;
+
+	Time GetLostSumDelay() const;
 protected:
 	virtual void DoDispose(void);
 
@@ -81,8 +83,10 @@ private:
 	uint32_t m_rxPackets;
 	uint64_t m_rxSize;
 	uint32_t m_lostPackets;
+	Time m_lostDelay;
 	Time m_maxDelay;
 	Time m_rxDelay;
+	Time m_statsStart;
 };
 
 } // namespace ns3
