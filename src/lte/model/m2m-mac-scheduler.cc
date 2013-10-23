@@ -1365,12 +1365,12 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 		std::map<uint16_t, EpsBearer::Qci>::iterator itQci = m_ueUlQci.find(rnti);
 		std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(rnti);
 		if (itQci != m_ueUlQci.end() && (*itQci).second > EpsBearer::NGBR_VIDEO_TCP_DEFAULT) {
-			m2mList.push_back(rnti);
-
 			std::map<uint16_t, uint32_t>::iterator itGrant = m_m2mGrantTimers.find(rnti);
 			if (itGrant != m_m2mGrantTimers.end() && (*itGrant).second > 0) {
 				continue;
 			}
+
+			m2mList.push_back(rnti);
 
 			if (itStats != m_flowStatsUl.end()
 					&& (*itStats).second.lastAveragedThroughput > m2mMaxLastAveragedThroughput) {
@@ -1546,10 +1546,10 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 
 	UpdateM2MAccessGrantTimers(m2mList, rbMap);
 
-	if (rbMap.GetSize() != rbMap.GetAvailableRbSize()) {
-		NS_LOG_FUNCTION(
-				this << " Ul Frame no. " << (params.m_sfnSf >> 4) << " subframe no. " << (0xF & params.m_sfnSf)); NS_LOG_INFO(this << "RB Available: " << nRbAvailable << ", H2H RB Demand: " << h2hRbDemand << ", H2H RB: " << nH2hRb << ", M2M RB Demand: " << m2mMinRbDemand);
-	}
+//	if (rbMap.GetSize() != rbMap.GetAvailableRbSize()) {
+//		NS_LOG_FUNCTION(
+//				this << " Ul Frame no. " << (params.m_sfnSf >> 4) << " subframe no. " << (0xF & params.m_sfnSf)); NS_LOG_INFO(this << "RB Available: " << nRbAvailable << ", H2H RB Demand: " << h2hRbDemand << ", H2H RB: " << nH2hRb << ", M2M RB Demand: " << m2mMinRbDemand);
+//	}
 
 	// Update global UE stats
 	// update UEs stats
@@ -1566,12 +1566,12 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 		(*itStats).second.lastAveragedBsrReceived = (1.0 / timeWindow) * (*itStats).second.lastTtiBsrReceived
 				+ (1.0 - (1.0 / timeWindow)) * (*itStats).second.lastAveragedBsrReceived;
 
-		if ((*itStats).second.lastTtiResourcesAllocated > 0) {
-			NS_LOG_INFO(
-					this << " UL UE" << ((*itStats).second.isM2m ? " M2M " : " H2H ") << (*itStats).first << " Last bytes "
-					<< (*itStats).second.lastTtiBytesTrasmitted << " Average throughput " << (*itStats).second.lastAveragedThroughput
-					<< " RB " << (*itStats).second.lastTtiResourcesAllocated);
-		}
+//		if ((*itStats).second.lastTtiResourcesAllocated > 0) {
+//			NS_LOG_INFO(
+//					this << " UL UE" << ((*itStats).second.isM2m ? " M2M " : " H2H ") << (*itStats).first << " Last bytes "
+//					<< (*itStats).second.lastTtiBytesTrasmitted << " Average throughput " << (*itStats).second.lastAveragedThroughput
+//					<< " RB " << (*itStats).second.lastTtiResourcesAllocated);
+//		}
 
 		(*itStats).second.lastTtiBytesTrasmitted = 0;
 		(*itStats).second.lastTtiResourcesAllocated = 0;

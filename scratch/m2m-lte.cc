@@ -29,14 +29,16 @@
 #include "ns3/internet-module.h"
 #include "ns3/point-to-point-helper.h"
 #include "ns3/applications-module.h"
+#include "ns3/flow-monitor-helper.h"
 #include <iostream>
 //#include "ns3/gtk-config-store.h"
 
 using namespace ns3;
 
-void UlSchedulingCallback(std::map<uint16_t, int> *ulTbMap, Time *startTime, std::string path, uint32_t frameNo,
-		uint32_t subframeNo, uint16_t rnti, uint8_t mcs, uint16_t size) {
-	if (Simulator::Now () < *startTime) {
+void UlSchedulingCallback(std::map<uint16_t, int> *ulTbMap,
+		std::map<uint16_t, std::vector<uint8_t> > *ulMcsMap, Time *startTime, std::string path,
+		uint32_t frameNo, uint32_t subframeNo, uint16_t rnti, uint8_t mcs, uint16_t size) {
+	if (Simulator::Now() < *startTime) {
 		return;
 	}
 
@@ -46,6 +48,14 @@ void UlSchedulingCallback(std::map<uint16_t, int> *ulTbMap, Time *startTime, std
 	} else {
 		ulTbMap->insert(std::pair<uint16_t, int>(rnti, size));
 	}
+
+	std::map<uint16_t, std::vector<uint8_t> >::iterator itMcs = ulMcsMap->find(rnti);
+	if (itMcs != ulMcsMap->end()) {
+		itMcs->second.push_back(mcs);
+	} else {
+		ulMcsMap->insert(std::pair<uint16_t, std::vector<uint8_t> >(rnti, std::vector<uint8_t>(1, mcs)));
+	}
+
 //	std::cout << " Frame " << frameNo << " SubFrame " << subframeNo << " RNTI " << rnti << " MCS " << (int)mcs << " TB " << size << std::endl;
 }
 
@@ -60,11 +70,11 @@ std::vector<EpsBearer> GetAvailableM2mRegularEpsBearers(double simulationTime) {
 
 	simulationTime = simulationTime * 1000; // s => ms
 	response.push_back(allBearers[0]);
-//	for (int i = 1; i < 11; i++) {
-//		if (allBearers[i].GetPacketDelayBudgetMs() <= simulationTime) {
-//			response.push_back(allBearers[i]);
-//		}
-//	}
+	for (int i = 1; i < 11; i++) {
+		if (allBearers[i].GetPacketDelayBudgetMs() <= simulationTime) {
+			response.push_back(allBearers[i]);
+		}
+	}
 
 	return response;
 }
@@ -72,8 +82,8 @@ std::vector<EpsBearer> GetAvailableM2mRegularEpsBearers(double simulationTime) {
 int main(int argc, char *argv[]) {
 	int scheduler = 0;
 	bool enableM2m = true;
-	uint16_t nM2mTrigger = 50;
-	uint16_t nM2mRegular = 100;
+	uint16_t nM2mTrigger = 0;
+	uint16_t nM2mRegular = 0;
 	uint16_t nH2h = 20;
 //	double simTime = 1.0;
 	double simTime = 0.5;
@@ -88,9 +98,9 @@ int main(int argc, char *argv[]) {
 	double interPacketH2h = 75; // ms
 	unsigned int minRBPerM2m = 3;
 	unsigned int minRBPerH2h = 3;
-//	double minPercentRBForM2m = (double)minRBPerM2m/bandwidth;
-	double minPercentRBForM2m = 0.0;
-	bool harqEnabled = true;
+	double minPercentRBForM2m = (double) minRBPerM2m / bandwidth;
+//	double minPercentRBForM2m = 0.0;
+	bool harqEnabled = false;
 
 	Config::SetDefault("ns3::LteEnbRrc::SrsPeriodicity", UintegerValue(320));
 	Config::SetDefault("ns3::LteEnbNetDevice::UlBandwidth", UintegerValue(bandwidth));
@@ -102,7 +112,8 @@ int main(int argc, char *argv[]) {
 	cmd.AddValue("nM2MRegular", "Number of UE to M2M time driven", nM2mRegular);
 	cmd.AddValue("nH2H", "Number of UE to H2H", nH2h);
 	cmd.AddValue("minRBPerM2M", "min resource block per M2M UE", minRBPerM2m);
-	cmd.AddValue("minPercentRBForM2M", "min percentage of resource blocks available for M2M UE", minPercentRBForM2m);
+	cmd.AddValue("minPercentRBForM2M", "min percentage of resource blocks available for M2M UE",
+			minPercentRBForM2m);
 	cmd.AddValue("minRBPerH2H", "min resource block demand per H2H UE", minRBPerH2h);
 	cmd.AddValue("cellRadius", "Radius [m] of cell", maxRadius);
 	cmd.AddValue("simTime", "Total duration of the simulation [s])", simTime);
@@ -145,7 +156,8 @@ int main(int argc, char *argv[]) {
 
 	// Uncomment to enable logging
 //	lteHelper->EnableLogComponents();
-//	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
+	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
+//	LogComponentEnable("M2mUdpServer", LOG_LEVEL_INFO);
 
 	// Create Nodes: eNodeB and UE
 	NodeContainer enbNodes;
@@ -202,9 +214,11 @@ int main(int argc, char *argv[]) {
 
 	// Create the Internet
 	PointToPointHelper p2ph;
-	p2ph.SetDeviceAttribute("DataRate", DataRateValue(DataRate("100Gb/s")));
+//	p2ph.SetDeviceAttribute("DataRate", DataRateValue(DataRate("100Gb/s")));
+	p2ph.SetDeviceAttribute("DataRate", DataRateValue(DataRate("1000Gb/s")));
 	p2ph.SetDeviceAttribute("Mtu", UintegerValue(1500));
-	p2ph.SetChannelAttribute("Delay", TimeValue(Seconds(0.010)));
+//	p2ph.SetChannelAttribute("Delay", TimeValue(Seconds(0.010)));
+	p2ph.SetChannelAttribute("Delay", TimeValue(Seconds(0.0)));
 	NetDeviceContainer internetDevices = p2ph.Install(pgw, remoteHost);
 	Ipv4AddressHelper ipv4h;
 	ipv4h.SetBase("1.0.0.0", "255.0.0.0");
@@ -252,10 +266,6 @@ int main(int argc, char *argv[]) {
 	tftH2h->Add(pfH2h);
 	lteHelper->ActivateDedicatedEpsBearer(ueH2hDevs, bearerH2h, tftH2h);
 	for (uint32_t u = 0; u < ueH2hNodes.GetN(); ++u) {
-		PacketSinkHelper packetSinkHelper("ns3::UdpSocketFactory",
-				InetSocketAddress(Ipv4Address::GetAny(), remoteH2hPort));
-		serverApps.Add(packetSinkHelper.Install(remoteHost));
-
 		UdpClientHelper appHelper(remoteHostAddr, remoteH2hPort);
 		appHelper.SetAttribute("Interval", TimeValue(MilliSeconds(interPacketH2h)));
 		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
@@ -263,6 +273,10 @@ int main(int argc, char *argv[]) {
 
 		clientApps.Add(appHelper.Install(ueH2hNodes.Get(u)));
 	}
+	M2mUdpServerHelper h2hServerHelper(remoteH2hPort);
+	h2hServerHelper.Install(remoteHost);
+	h2hServerHelper.GetServer()->SetAttribute("MaxPacketDelay",
+			TimeValue(MilliSeconds(bearerH2h.GetPacketDelayBudgetMs())));
 
 	// M2M Trigger Report
 	EpsBearer bearerM2mTrigger = EpsBearer(EpsBearer::NGBR_M2M_TRIGGER_REPORT);
@@ -276,10 +290,6 @@ int main(int argc, char *argv[]) {
 	tftM2mTrigger->Add(pfM2mTrigger);
 	lteHelper->ActivateDedicatedEpsBearer(ueM2mTriggerDevs, bearerM2mTrigger, tftM2mTrigger);
 	for (uint32_t u = 0; u < ueM2mTriggerNodes.GetN(); ++u) {
-		PacketSinkHelper packetSinkHelper("ns3::UdpSocketFactory",
-				InetSocketAddress(Ipv4Address::GetAny(), remoteM2mTriggerPort));
-		serverApps.Add(packetSinkHelper.Install(remoteHost));
-
 		M2mUdpEchoClientHelper appHelper(remoteHostAddr, remoteM2mTriggerPort);
 		appHelper.SetAttribute("Interval", TimeValue(MilliSeconds(0)));
 		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
@@ -289,9 +299,15 @@ int main(int argc, char *argv[]) {
 
 		clientApps.Add(appHelper.Install(ueM2mTriggerNodes.Get(u)));
 	}
+	M2mUdpServerHelper m2mTriggerServerHelper(remoteM2mTriggerPort);
+	m2mTriggerServerHelper.Install(remoteHost);
+	m2mTriggerServerHelper.GetServer()->SetAttribute("MaxPacketDelay",
+			TimeValue(MilliSeconds(bearerM2mTrigger.GetPacketDelayBudgetMs())));
 
 	// M2M Regular Report
 	std::vector<EpsBearer> bearerM2mRegularList = GetAvailableM2mRegularEpsBearers(simTime);
+	std::vector<NetDeviceContainer> ueM2mRegularClassDevs;
+	ueM2mRegularClassDevs.resize(bearerM2mRegularList.size(), NetDeviceContainer());
 	for (uint32_t u = 0; u < ueM2mRegularDevs.GetN(); u++) {
 		Ptr<NetDevice> ueDevice = ueM2mRegularDevs.Get(u);
 		Ptr<EpcTft> tft = Create<EpcTft>();
@@ -300,7 +316,6 @@ int main(int argc, char *argv[]) {
 		int port = remoteM2mRegularPort + (u % bearerM2mRegularList.size());
 		if (!enableM2m) {
 			bearer = EpsBearer(EpsBearer::NGBR_VIDEO_TCP_DEFAULT);
-			port = remoteM2mRegularPort;
 		}
 		pf.remoteAddress = remoteHostAddr;
 		pf.remotePortStart = port;
@@ -312,28 +327,25 @@ int main(int argc, char *argv[]) {
 		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
 		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeM2m));
 		clientApps.Add(appHelper.Install(ueDevice->GetNode()));
+		ueM2mRegularClassDevs.at(u % bearerM2mRegularList.size()).Add(ueDevice);
 	}
+	std::vector<M2mUdpServerHelper> m2mRegularServerHelpers;
 	for (unsigned int i = 0; i < bearerM2mRegularList.size(); i++) {
 		int port = remoteM2mRegularPort + i;
-		PacketSinkHelper packetSinkHelper("ns3::UdpSocketFactory",
-				InetSocketAddress(Ipv4Address::GetAny(), port));
-		serverApps.Add(packetSinkHelper.Install(remoteHost));
+		M2mUdpServerHelper m2mTriggerServerHelper(port);
+		m2mTriggerServerHelper.Install(remoteHost);
+		m2mTriggerServerHelper.GetServer()->SetAttribute("MaxPacketDelay",
+				TimeValue(MilliSeconds(bearerM2mRegularList.at(i).GetPacketDelayBudgetMs())));
+		m2mRegularServerHelpers.push_back(m2mTriggerServerHelper);
 	}
 
 	serverApps.Start(Seconds(0.01));
 	clientApps.Start(Seconds(0.01));
 
-//	lteHelper->EnablePdcpTraces();
-//	lteHelper->EnableRlcTraces();
-//	lteHelper->EnableUlMacTraces();
-//	lteHelper->EnableUlPhyTraces();
-//	Ptr<RadioBearerStatsCalculator> rlcStats = lteHelper->GetRlcStats();
-//	rlcStats->SetAttribute("StartTime", TimeValue(Seconds(statsStartTime)));
-//	rlcStats->SetAttribute("EpochDuration", TimeValue(Seconds(simTime)));
-
 	std::map<uint16_t, int> ulTbMap;
+	std::map<uint16_t, std::vector<uint8_t> > ulMcsMap;
 	Config::Connect("/NodeList/*/DeviceList/*/LteEnbMac/UlScheduling",
-			MakeBoundCallback(&UlSchedulingCallback, &ulTbMap, &statsStartTime));
+			MakeBoundCallback(&UlSchedulingCallback, &ulTbMap, &ulMcsMap, &statsStartTime));
 
 	Simulator::Stop(Seconds(simTime - 0.0001) + statsStartTime);
 	Simulator::Run();
@@ -342,45 +354,83 @@ int main(int argc, char *argv[]) {
 	// config.ConfigureAttributes ();
 
 	std::cout << "UL - Test with " << ueAllDevs.GetN() << " user(s). Scheduler " << scheduler << std::endl;
+	std::cout << "H2H with " << ueH2hDevs.GetN() << " user(s)" << std::endl;
 	double avgThroughput = 0.0;
+	Ptr<M2mUdpServer> serverApp = h2hServerHelper.GetServer();
+	double avgDelay = serverApp->GetReceivedSumDelay().GetMilliSeconds();
 	for (unsigned int i = 0; i < ueH2hDevs.GetN(); i++) {
+		uint16_t rnti = ueH2hDevs.Get(i)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti();
 		int tb = 0;
-		std::map<uint16_t, int>::iterator it = ulTbMap.find(
-				ueH2hDevs.Get(i)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti());
-		if (it != ulTbMap.end())
-			tb = it->second;
-		avgThroughput += (double) tb / simTime;
-//		std::cout << "H2H User " << " imsi " << imsi << " tb " << tb << "  thr " << (double) tb / simTime
+		std::map<uint16_t, int>::iterator itTb = ulTbMap.find(rnti);
+		if (itTb != ulTbMap.end())
+			tb = itTb->second;
+		avgThroughput += (8 * tb) / (simTime * 1024 * 1024); // to mbps
+
+//		std::cout << "\tRNTI " << rnti << " tb " << tb << "  thr " << (double) tb / simTime
 //				<< std::endl;
 	}
-	std::cout << "\tH2H Avg (" << ueH2hDevs.GetN() << ") Throughput " << (avgThroughput / ueH2hDevs.GetN())
-			<< " Bps" << std::endl;
+	std::cout << "\tAvg Throughput: " << (ueH2hDevs.GetN() > 0 ? avgThroughput / ueH2hDevs.GetN() : 0.0)
+			<< " mbps" << std::endl;
+	std::cout << "\tServer rx packets: " << serverApp->GetReceivedPackets() << std::endl;
+	std::cout << "\tServer rx bytes: " << serverApp->GetReceivedBytes() << std::endl;
+	std::cout << "\tServer lost packets: " << serverApp->GetLostPackets() << std::endl;
+	std::cout << "\tServer avg delay: "
+			<< ((serverApp->GetReceivedPackets() > 0) ? avgDelay / serverApp->GetReceivedPackets() : 0.0)
+			<< " ms" << std::endl;
+
+	std::cout << "\nM2M Trigger with " << ueM2mTriggerDevs.GetN() << " user(s)" << std::endl;
 	avgThroughput = 0.0;
+	serverApp = m2mTriggerServerHelper.GetServer();
+	avgDelay = serverApp->GetReceivedSumDelay().GetMilliSeconds();
 	for (unsigned int i = 0; i < ueM2mTriggerDevs.GetN(); i++) {
+		uint16_t rnti = ueM2mTriggerDevs.Get(i)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti();
 		int tb = 0;
-		std::map<uint16_t, int>::iterator it = ulTbMap.find(
-				ueM2mTriggerDevs.Get(i)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti());
+		std::map<uint16_t, int>::iterator it = ulTbMap.find(rnti);
 		if (it != ulTbMap.end())
 			tb = it->second;
-		avgThroughput += (double) tb / simTime;
-//		std::cout << "M2M Trigger User " << " imsi " << imsi << " tb " << tb << "  thr "
-//				<< (double) tb / simTime << std::endl;
+		avgThroughput += (8 * tb) / (simTime * 1024 * 1024); // to mbps
+
+//		std::cout << "\tRNTI " << rnti << " tb " << tb << "  thr " << (double) tb / simTime
+//				<< std::endl;
 	}
-	std::cout << "\tM2M Trigger (" << ueM2mTriggerDevs.GetN() << ") Avg Throughput "
-			<< (avgThroughput / ueM2mTriggerDevs.GetN()) << " Bps" << std::endl;
+	std::cout << "\tAvg Throughput: "
+			<< (ueM2mTriggerDevs.GetN() > 0 ? avgThroughput / ueM2mTriggerDevs.GetN() : 0.0) << " mbps"
+			<< std::endl;
+	std::cout << "\tServer rx packets: " << serverApp->GetReceivedPackets() << std::endl;
+	std::cout << "\tServer rx bytes: " << serverApp->GetReceivedBytes() << std::endl;
+	std::cout << "\tServer lost packets: " << serverApp->GetLostPackets() << std::endl;
+	std::cout << "\tServer avg delay: "
+			<< ((serverApp->GetReceivedPackets() > 0) ? avgDelay / serverApp->GetReceivedPackets() : 0.0)
+			<< " ms" << std::endl;
+
+	std::cout << "\nM2M Regular with " << ueM2mRegularDevs.GetN() << " user(s)" << std::endl;
 	avgThroughput = 0.0;
 	for (unsigned int i = 0; i < ueM2mRegularDevs.GetN(); i++) {
+		uint16_t rnti = ueM2mRegularDevs.Get(i)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti();
 		int tb = 0;
-		std::map<uint16_t, int>::iterator it = ulTbMap.find(
-				ueM2mRegularDevs.Get(i)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti());
+		std::map<uint16_t, int>::iterator it = ulTbMap.find(rnti);
 		if (it != ulTbMap.end())
 			tb = it->second;
-		avgThroughput += (double) tb / simTime;
-//		std::cout << "M2M Regular User " << " imsi " << imsi << " tb " << tb << "  thr "
-//				<< (double) tb / simTime << std::endl;
+		avgThroughput += (8 * tb) / (simTime * 1024 * 1024); // to mbps
+
+//		std::cout << "\tRNTI " << rnti << " tb " << tb << "  thr " << (double) tb / simTime
+//				<< std::endl;
 	}
-	std::cout << "\tM2M Regular (" << ueM2mRegularDevs.GetN() << ") Avg Throughput "
-			<< (avgThroughput / ueM2mRegularDevs.GetN()) << " Bps" << std::endl;
+	std::cout << "\tAvg Throughput: "
+			<< (ueM2mRegularDevs.GetN() > 0 ? avgThroughput / ueM2mRegularDevs.GetN() : 0.0) << " mbps"
+			<< std::endl;
+	for (unsigned int i = 0; i < bearerM2mRegularList.size(); i++) {
+		serverApp = m2mRegularServerHelpers.at(i).GetServer();
+		avgDelay = serverApp->GetReceivedSumDelay().GetMilliSeconds();
+		std::cout << "\tQoS delay: " << serverApp->GetMaxPacketDelay().GetMilliSeconds() << " ms";
+		std::cout << " with " << ueM2mRegularClassDevs.at(i).GetN() << " user(s)" << std::endl;
+		std::cout << "\t\tServer rx packets: " << serverApp->GetReceivedPackets() << std::endl;
+		std::cout << "\t\tServer rx bytes: " << serverApp->GetReceivedBytes() << std::endl;
+		std::cout << "\t\tServer lost packets: " << serverApp->GetLostPackets() << std::endl;
+		std::cout << "\t\tServer avg delay: "
+				<< ((serverApp->GetReceivedPackets() > 0) ? avgDelay / serverApp->GetReceivedPackets() : 0.0)
+				<< " ms" << std::endl;
+	}
 
 	Simulator::Destroy();
 	return 0;
