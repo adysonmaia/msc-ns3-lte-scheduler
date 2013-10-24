@@ -60,7 +60,7 @@ void ClientTxCallback(std::map<Ptr<NetDevice>, int> *txMap, Time *startTime, Ptr
 	if (itTx != txMap->end()) {
 		itTx->second++;
 	} else {
-		txMap->insert(std::pair<Ptr<NetDevice>, int>(netDevice, 0));
+		txMap->insert(std::pair<Ptr<NetDevice>, int>(netDevice, 1));
 	}
 }
 
@@ -90,7 +90,7 @@ std::vector<EpsBearer> GetAvailableM2mRegularEpsBearers(double simulationTime) {
 
 	simulationTime = simulationTime * 1000; // s => ms
 	for (int i = 0; i < 11; i++) {
-		if (allBearers[i].GetPacketDelayBudgetMs() <= simulationTime) {
+		if (allBearers[i].GetPacketDelayBudgetMs() < simulationTime) {
 			response.push_back(allBearers[i]);
 		}
 	}
@@ -113,14 +113,13 @@ int main(int argc, char *argv[]) {
 	unsigned int packetSizeM2m = 125; // bytes
 	unsigned int packetSizeH2h = 1200; // bytes
 //	double interPacketM2mTrigger = 30; // s
-//	double interPacketM2mTrigger = 0.025; // s
-	double interPacketM2mTrigger = 0.05; // s
+	double interPacketM2mTrigger = 0.025; // s
 	double interPacketH2h = 75; // ms
 	unsigned int minRBPerM2m = 3;
+//	unsigned int minRBPerM2m = bandwidth;
 	unsigned int minRBPerH2h = 3;
 	double minPercentRBForM2m = (double) minRBPerM2m / bandwidth;
-//	double minPercentRBForM2m = 0.0;
-	bool harqEnabled = false;
+	bool harqEnabled = true;
 
 	Config::SetDefault("ns3::LteEnbRrc::SrsPeriodicity", UintegerValue(320));
 	Config::SetDefault("ns3::LteEnbNetDevice::UlBandwidth", UintegerValue(bandwidth));
@@ -176,8 +175,9 @@ int main(int argc, char *argv[]) {
 
 	// Uncomment to enable logging
 //	lteHelper->EnableLogComponents();
-	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
+//	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
 //	LogComponentEnable("M2mUdpServer", LOG_LEVEL_INFO);
+//	LogComponentEnable("M2mUdpClientApplication", LOG_LEVEL_INFO);
 
 	// Create Nodes: eNodeB and UE
 	NodeContainer enbNodes;
@@ -312,8 +312,9 @@ int main(int argc, char *argv[]) {
 	tftM2mTrigger->Add(pfM2mTrigger);
 	lteHelper->ActivateDedicatedEpsBearer(ueM2mTriggerDevs, bearerM2mTrigger, tftM2mTrigger);
 	for (uint32_t u = 0; u < ueM2mTriggerNodes.GetN(); ++u) {
-		M2mUdpEchoClientHelper appHelper(remoteHostAddr, remoteM2mTriggerPort);
-		appHelper.SetAttribute("Interval", TimeValue(MilliSeconds(0)));
+		M2mUdpClientHelper appHelper(remoteHostAddr, remoteM2mTriggerPort);
+		appHelper.SetAttribute("Interval",
+				TimeValue(MilliSeconds(bearerM2mTriggerDefault.GetPacketDelayBudgetMs())));
 		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
 		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeM2m));
 		appHelper.SetAttribute("RandomInterval",

@@ -51,7 +51,7 @@ TypeId M2mUdpServer::GetTypeId(void) {
 }
 
 M2mUdpServer::M2mUdpServer() :
-		m_rxPackets(0), m_rxSize(0), m_lostPackets(0), m_rxDelay(Time(0.0)), m_lostDelay(Time(0.0)) {
+		m_rxPackets(0), m_rxSize(0), m_lostPackets(0), m_lostDelay(Time(0.0)), m_rxDelay(Time(0.0)) {
 }
 
 M2mUdpServer::~M2mUdpServer() {
@@ -129,7 +129,8 @@ void M2mUdpServer::HandleRead(Ptr<Socket> socket) {
 			if (timeTx < m_statsStart)
 				return;
 			Time delayTime = Simulator::Now() - timeTx;
-			NS_LOG_INFO("tx time " << timeTx << " rx time " << Simulator::Now()
+			NS_LOG_INFO("From " << InetSocketAddress::ConvertFrom (from).GetIpv4 () << " tx time " << timeTx.GetMilliSeconds()
+					<< " rx time " << Simulator::Now().GetMilliSeconds()
 					<< " delay " << delayTime.GetMilliSeconds() << " max delay " << m_maxDelay.GetMilliSeconds());
 			if (delayTime > m_maxDelay && m_maxDelay.GetDouble() > 0.0) {
 				m_lostPackets++;

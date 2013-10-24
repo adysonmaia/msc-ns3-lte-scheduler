@@ -27,9 +27,9 @@ def build(bld):
         'helper/udp-echo-helper.cc',
         'helper/v4ping-helper.cc',
         'helper/radvd-helper.cc',
-        'model/m2m-udp-echo-client.cc',
+        'model/m2m-udp-client.cc',
         'model/m2m-udp-server.cc',
-        'helper/m2m-udp-echo-helper.cc',
+        'helper/m2m-udp-client-helper.cc',
         'helper/m2m-udp-server-helper.cc',
         ]
 
@@ -65,9 +65,9 @@ def build(bld):
         'helper/udp-echo-helper.h',
         'helper/v4ping-helper.h',
         'helper/radvd-helper.h',
-        'model/m2m-udp-echo-client.h',
+        'model/m2m-udp-client.h',
         'model/m2m-udp-server.h',
-        'helper/m2m-udp-echo-helper.h',
+        'helper/m2m-udp-client-helper.h',
         'helper/m2m-udp-server-helper.h',
         ]
 
