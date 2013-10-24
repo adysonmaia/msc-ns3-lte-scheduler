@@ -31,51 +31,46 @@
 #include "ns3/applications-module.h"
 #include "ns3/flow-monitor-helper.h"
 #include <iostream>
+#include <fstream>
 //#include "ns3/gtk-config-store.h"
 
 using namespace ns3;
 
-void UlSchedulingCallback(std::map<uint16_t, int> *ulTbMap, Time *startTime, std::string path,
+struct StatsTools_s {
+	std::string type;
+	NetDeviceContainer *ptr_netDevContainer;
+	ApplicationContainer *ptr_appContainer;
+	enum EpsBearer::Qci qci;
+};
+
+void UlSchedulingCallback(std::map<uint16_t, unsigned long> *ulTbMap, Time *startTime, std::string path,
 		uint32_t frameNo, uint32_t subframeNo, uint16_t rnti, uint8_t mcs, uint16_t size) {
 //	if (Simulator::Now() < *startTime) {
 //		return;
 //	}
-	std::map<uint16_t, int>::iterator itMap = ulTbMap->find(rnti);
+	std::map<uint16_t, unsigned long>::iterator itMap = ulTbMap->find(rnti);
 	if (itMap != ulTbMap->end()) {
 		itMap->second += size;
 	} else {
-		ulTbMap->insert(std::pair<uint16_t, int>(rnti, size));
+		ulTbMap->insert(std::pair<uint16_t, unsigned long>(rnti, size));
 	}
 
 //	std::cout << " Frame " << frameNo << " SubFrame " << subframeNo << " RNTI " << rnti << " MCS " << (int)mcs << " TB " << size << std::endl;
 }
 
-void ClientTxCallback(std::map<Ptr<NetDevice>, int> *txMap, Time *startTime, Ptr<const Packet> packet,
-		Ptr<Ipv4> ipv4, uint32_t interface) {
+void ClientTxCallback(std::map<Ptr<NetDevice>, std::pair<unsigned int, unsigned long> > *txMap,
+		Time *startTime, Ptr<const Packet> packet, Ptr<Ipv4> ipv4, uint32_t interface) {
 //	if (Simulator::Now() < *startTime) {
 //		return;
 //	}
 	Ptr<NetDevice> netDevice = ipv4->GetNetDevice(interface);
-	std::map<Ptr<NetDevice>, int>::iterator itTx = txMap->find(netDevice);
+	std::map<Ptr<NetDevice>, std::pair<unsigned int, unsigned long> >::iterator itTx = txMap->find(netDevice);
 	if (itTx != txMap->end()) {
-		itTx->second++;
+		itTx->second.first++;
+		itTx->second.second += packet->GetSize();
 	} else {
-		txMap->insert(std::pair<Ptr<NetDevice>, int>(netDevice, 1));
-	}
-}
-
-void ClientDropCallback(std::map<Ptr<NetDevice>, int> *dropMap, Time *startTime, const Ipv4Header &header,
-		Ptr<const Packet> packet, Ipv4L3Protocol::DropReason reason, Ptr<Ipv4> ipv4, uint32_t interface) {
-	std::cout << " Drop " << reason << std::endl;
-	if (Simulator::Now() < *startTime) {
-		return;
-	}
-	Ptr<NetDevice> netDevice = ipv4->GetNetDevice(interface);
-	std::map<Ptr<NetDevice>, int>::iterator it = dropMap->find(netDevice);
-	if (it != dropMap->end()) {
-		it->second++;
-	} else {
-		dropMap->insert(std::pair<Ptr<NetDevice>, int>(netDevice, 0));
+		std::pair<unsigned int, unsigned long> value(1, packet->GetSize());
+		txMap->insert(std::pair<Ptr<NetDevice>, std::pair<unsigned int, unsigned long> >(netDevice, value));
 	}
 }
 
@@ -89,7 +84,7 @@ std::vector<EpsBearer> GetAvailableM2mRegularEpsBearers(double simulationTime) {
 			EpsBearer::NGBR_M2M_REGULAR_REPORT_10), EpsBearer(EpsBearer::NGBR_M2M_REGULAR_REPORT_11) };
 
 	simulationTime = simulationTime * 1000; // s => ms
-	for (int i = 0; i < 11; i++) {
+	for (int i = 4; i < 10; i++) {
 		if (allBearers[i].GetPacketDelayBudgetMs() < simulationTime) {
 			response.push_back(allBearers[i]);
 		}
@@ -104,22 +99,22 @@ int main(int argc, char *argv[]) {
 	uint16_t nM2mTrigger = 150;
 	uint16_t nM2mRegular = 50;
 	uint16_t nH2h = 20;
-//	double simTime = 1.0;
-	double simTime = 0.5;
+	double simTime = 1.0;
 	double minRadius = 375;
 	double maxRadius = 1000;
 	unsigned int bandwidth = 25; // n RB
 	Time statsStartTime = Seconds(0.300);
 	unsigned int packetSizeM2m = 125; // bytes
 	unsigned int packetSizeH2h = 1200; // bytes
-//	double interPacketM2mTrigger = 30; // s
-	double interPacketM2mTrigger = 0.025; // s
+	double interPacketM2mTrigger = 30; // s
+//	double interPacketM2mTrigger = 0.025; // s
 	double interPacketH2h = 75; // ms
 	unsigned int minRBPerM2m = 3;
 //	unsigned int minRBPerM2m = bandwidth;
 	unsigned int minRBPerH2h = 3;
 	double minPercentRBForM2m = (double) minRBPerM2m / bandwidth;
 	bool harqEnabled = true;
+	int currentExecution = 0;
 
 	Config::SetDefault("ns3::LteEnbRrc::SrsPeriodicity", UintegerValue(320));
 	Config::SetDefault("ns3::LteEnbNetDevice::UlBandwidth", UintegerValue(bandwidth));
@@ -136,6 +131,7 @@ int main(int argc, char *argv[]) {
 	cmd.AddValue("minRBPerH2H", "min resource block demand per H2H UE", minRBPerH2h);
 	cmd.AddValue("cellRadius", "Radius [m] of cell", maxRadius);
 	cmd.AddValue("simTime", "Total duration of the simulation [s])", simTime);
+	cmd.AddValue("nExec", "number of current execution", currentExecution);
 	cmd.Parse(argc, argv);
 
 	ConfigStore inputConfig;
@@ -178,6 +174,7 @@ int main(int argc, char *argv[]) {
 //	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
 //	LogComponentEnable("M2mUdpServer", LOG_LEVEL_INFO);
 //	LogComponentEnable("M2mUdpClientApplication", LOG_LEVEL_INFO);
+//	LogComponentEnable("Queue", LOG_LEVEL_ALL);
 
 	// Create Nodes: eNodeB and UE
 	NodeContainer enbNodes;
@@ -220,6 +217,7 @@ int main(int argc, char *argv[]) {
 	NetDeviceContainer ueM2mTriggerDevs = lteHelper->InstallUeDevice(ueM2mTriggerNodes);
 	NetDeviceContainer ueM2mRegularDevs = lteHelper->InstallUeDevice(ueM2mRegularNodes);
 	NetDeviceContainer ueM2mDevs, ueAllDevs;
+	std::vector<NetDeviceContainer> ueM2mRegularQciDevs;
 	ueM2mDevs.Add(ueM2mTriggerDevs);
 	ueM2mDevs.Add(ueM2mRegularDevs);
 	ueAllDevs.Add(ueH2hDevs);
@@ -237,9 +235,9 @@ int main(int argc, char *argv[]) {
 //	p2ph.SetDeviceAttribute("DataRate", DataRateValue(DataRate("100Gb/s")));
 	p2ph.SetDeviceAttribute("DataRate", DataRateValue(DataRate("1000Gb/s")));
 	p2ph.SetDeviceAttribute("Mtu", UintegerValue(1500));
-//	p2ph.SetChannelAttribute("Delay", TimeValue(Seconds(0.010)));
 	p2ph.SetChannelAttribute("Delay", TimeValue(Seconds(0.0)));
 	NetDeviceContainer internetDevices = p2ph.Install(pgw, remoteHost);
+//	p2ph.EnablePcapAll("m2m-p2p", true);
 	Ipv4AddressHelper ipv4h;
 	ipv4h.SetBase("1.0.0.0", "255.0.0.0");
 	Ipv4InterfaceContainer internetIpIfaces = ipv4h.Assign(internetDevices);
@@ -273,8 +271,14 @@ int main(int argc, char *argv[]) {
 	uint16_t remoteH2hPort = 2000;
 	uint16_t remoteM2mTriggerPort = 2001;
 	uint16_t remoteM2mRegularPort = 2002;
-	ApplicationContainer clientApps;
-	ApplicationContainer serverApps;
+	ApplicationContainer allClientApps;
+	ApplicationContainer allServerApps;
+	ApplicationContainer h2hServerApps;
+	ApplicationContainer m2mServerApps;
+	ApplicationContainer m2mTriggerServerApps;
+	ApplicationContainer m2mRegularServerApps;
+	std::vector<ApplicationContainer> m2mRegularQciServerApps;
+	std::map<Ptr<Node>, EpsBearer> ueBearerMap;
 
 	// H2H
 	EpsBearer bearerH2h = EpsBearer(EpsBearer::GBR_CONV_VIDEO);
@@ -291,10 +295,12 @@ int main(int argc, char *argv[]) {
 		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
 		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeH2h));
 
-		clientApps.Add(appHelper.Install(ueH2hNodes.Get(u)));
+		Ptr<Node> node = ueH2hNodes.Get(u);
+		allClientApps.Add(appHelper.Install(node));
+		ueBearerMap.insert(std::pair<Ptr<Node>, EpsBearer>(node, bearerH2h));
 	}
 	M2mUdpServerHelper h2hServerHelper(remoteH2hPort);
-	h2hServerHelper.Install(remoteHost);
+	h2hServerApps.Add(h2hServerHelper.Install(remoteHost));
 	h2hServerHelper.GetServer()->SetAttribute("MaxPacketDelay",
 			TimeValue(MilliSeconds(bearerH2h.GetPacketDelayBudgetMs())));
 //	h2hServerHelper.GetServer()->SetAttribute("StatsStartTime", TimeValue(statsStartTime));
@@ -313,25 +319,26 @@ int main(int argc, char *argv[]) {
 	lteHelper->ActivateDedicatedEpsBearer(ueM2mTriggerDevs, bearerM2mTrigger, tftM2mTrigger);
 	for (uint32_t u = 0; u < ueM2mTriggerNodes.GetN(); ++u) {
 		M2mUdpClientHelper appHelper(remoteHostAddr, remoteM2mTriggerPort);
-		appHelper.SetAttribute("Interval",
-				TimeValue(MilliSeconds(bearerM2mTriggerDefault.GetPacketDelayBudgetMs())));
+		appHelper.SetAttribute("Interval", TimeValue(MilliSeconds(0.0)));
 		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
 		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeM2m));
 		appHelper.SetAttribute("RandomInterval",
 				RandomVariableValue(ExponentialVariable(interPacketM2mTrigger)));
 
-		clientApps.Add(appHelper.Install(ueM2mTriggerNodes.Get(u)));
+		Ptr<Node> node = ueM2mTriggerNodes.Get(u);
+		allClientApps.Add(appHelper.Install(node));
+		ueBearerMap.insert(std::pair<Ptr<Node>, EpsBearer>(node, bearerM2mTriggerDefault));
 	}
 	M2mUdpServerHelper m2mTriggerServerHelper(remoteM2mTriggerPort);
-	m2mTriggerServerHelper.Install(remoteHost);
+	m2mTriggerServerApps.Add(m2mTriggerServerHelper.Install(remoteHost));
+	m2mServerApps.Add(m2mTriggerServerApps);
 	m2mTriggerServerHelper.GetServer()->SetAttribute("MaxPacketDelay",
 			TimeValue(MilliSeconds(bearerM2mTriggerDefault.GetPacketDelayBudgetMs())));
 //	m2mTriggerServerHelper.GetServer()->SetAttribute("StatsStartTime", TimeValue(statsStartTime));
 
 	// M2M Regular Report
 	std::vector<EpsBearer> bearerM2mRegularList = GetAvailableM2mRegularEpsBearers(simTime);
-	std::vector<NetDeviceContainer> ueM2mRegularClassDevs;
-	ueM2mRegularClassDevs.resize(bearerM2mRegularList.size(), NetDeviceContainer());
+	ueM2mRegularQciDevs.resize(bearerM2mRegularList.size(), NetDeviceContainer());
 	for (uint32_t u = 0; u < ueM2mRegularDevs.GetN(); u++) {
 		Ptr<NetDevice> ueDevice = ueM2mRegularDevs.Get(u);
 		Ptr<EpcTft> tft = Create<EpcTft>();
@@ -339,6 +346,7 @@ int main(int argc, char *argv[]) {
 		EpsBearer bearer = bearerM2mRegularList.at(u % bearerM2mRegularList.size());
 		int port = remoteM2mRegularPort + (u % bearerM2mRegularList.size());
 		Time interval = MilliSeconds(bearer.GetPacketDelayBudgetMs());
+		ueBearerMap.insert(std::pair<Ptr<Node>, EpsBearer>(ueDevice->GetNode(), bearer));
 		if (!enableM2m) {
 			bearer = EpsBearer(EpsBearer::NGBR_VIDEO_TCP_DEFAULT);
 		}
@@ -351,32 +359,34 @@ int main(int argc, char *argv[]) {
 		appHelper.SetAttribute("Interval", TimeValue(interval));
 		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
 		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeM2m));
-		clientApps.Add(appHelper.Install(ueDevice->GetNode()));
-		ueM2mRegularClassDevs.at(u % bearerM2mRegularList.size()).Add(ueDevice);
+		allClientApps.Add(appHelper.Install(ueDevice->GetNode()));
+		ueM2mRegularQciDevs.at(u % bearerM2mRegularList.size()).Add(ueDevice);
 	}
-	std::vector<M2mUdpServerHelper> m2mRegularServerHelperList;
 	for (unsigned int i = 0; i < bearerM2mRegularList.size(); i++) {
 		int port = remoteM2mRegularPort + i;
 		M2mUdpServerHelper m2mRegularServerHelper(port);
-		m2mRegularServerHelper.Install(remoteHost);
+		m2mRegularQciServerApps.push_back(m2mRegularServerHelper.Install(remoteHost));
+		m2mRegularServerApps.Add(m2mRegularQciServerApps.at(i));
+		m2mServerApps.Add(m2mRegularServerApps);
 		m2mRegularServerHelper.GetServer()->SetAttribute("MaxPacketDelay",
 				TimeValue(MilliSeconds(bearerM2mRegularList.at(i).GetPacketDelayBudgetMs())));
 //		m2mRegularServerHelper.GetServer()->SetAttribute("StatsStartTime", TimeValue(statsStartTime));
-		m2mRegularServerHelperList.push_back(m2mRegularServerHelper);
 	}
 
-	serverApps.Start(Seconds(0.01));
-	clientApps.Start(Seconds(0.01));
+	allServerApps.Add(h2hServerApps);
+	allServerApps.Add(m2mServerApps);
 
-	std::map<uint16_t, int> ulTbMap;
+	allServerApps.Start(Seconds(0.01));
+	allClientApps.Start(Seconds(0.01));
+
+	allClientApps.Stop(Seconds(simTime - 0.05));
+
+	std::map<uint16_t, unsigned long> ulTbMap;
 	Config::Connect("/NodeList/*/DeviceList/*/LteEnbMac/UlScheduling",
 			MakeBoundCallback(&UlSchedulingCallback, &ulTbMap, &statsStartTime));
-	std::map<Ptr<NetDevice>, int> clientTxMap;
+	std::map<Ptr<NetDevice>, std::pair<unsigned int, unsigned long> > clientTxMap;
 	Config::ConnectWithoutContext("/NodeList/*/$ns3::Ipv4L3Protocol/Tx",
 			MakeBoundCallback(&ClientTxCallback, &clientTxMap, &statsStartTime));
-	std::map<Ptr<NetDevice>, int> clientDropMap;
-	Config::ConnectWithoutContext("/NodeList/*/$ns3::Ipv4L3Protocol/Drop",
-			MakeBoundCallback(&ClientDropCallback, &clientDropMap, &statsStartTime));
 
 //	Simulator::Stop(Seconds(simTime - 0.0001) + statsStartTime);
 	Simulator::Stop(Seconds(simTime));
@@ -385,124 +395,185 @@ int main(int argc, char *argv[]) {
 	// GtkConfigStore config;
 	// config.ConfigureAttributes ();
 
-	std::cout << "UL - Test with " << ueAllDevs.GetN() << " user(s). Scheduler " << scheduler << std::endl;
-	std::cout << "H2H with " << ueH2hDevs.GetN() << " user(s)" << std::endl;
-	double avgThroughput = 0.0;
-	Ptr<M2mUdpServer> serverApp = h2hServerHelper.GetServer();
-	double avgDelay = serverApp->GetReceivedSumDelay().GetMilliSeconds();
-	double avgLostDelay = serverApp->GetLostSumDelay().GetMilliSeconds();
-	int clientSumPacketTx = 0;
-	for (unsigned int i = 0; i < ueH2hDevs.GetN(); i++) {
-		uint16_t rnti = ueH2hDevs.Get(i)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti();
-		int tb = 0;
-		std::map<uint16_t, int>::iterator itTb = ulTbMap.find(rnti);
-		if (itTb != ulTbMap.end())
-			tb = itTb->second;
-		avgThroughput += (8 * tb) / (simTime * 1024 * 1024); // to mbps
+	std::vector<StatsTools_s> statsToolsList;
+	StatsTools_s toolAll, toolH2h, toolM2m, toolM2mTrigger, toolM2mRegular;
+	toolAll.type = "ALL";
+	toolAll.qci = EpsBearer::Qci(0);
+	toolAll.ptr_appContainer = &allServerApps;
+	toolAll.ptr_netDevContainer = &ueAllDevs;
+	statsToolsList.push_back(toolAll);
 
-		std::map<Ptr<NetDevice>, int>::iterator itClientTx = clientTxMap.find(ueH2hDevs.Get(i));
-		if (itClientTx != clientTxMap.end()) {
-			clientSumPacketTx += itClientTx->second;
-		}
+	toolH2h.type = "H2H";
+	toolH2h.qci = bearerH2h.qci;
+	toolH2h.ptr_appContainer = &h2hServerApps;
+	toolH2h.ptr_netDevContainer = &ueH2hDevs;
+	statsToolsList.push_back(toolH2h);
 
-//		std::cout << "\tRNTI " << rnti << " tb " << tb << "  thr " << (double) tb / simTime
-//				<< std::endl;
+	toolM2m.type = "M2M";
+	toolM2m.qci = EpsBearer::Qci(0);
+	toolM2m.ptr_appContainer = &m2mServerApps;
+	toolM2m.ptr_netDevContainer = &ueM2mDevs;
+	statsToolsList.push_back(toolM2m);
+
+	toolM2mTrigger.type = "M2M Trigger";
+	toolM2mTrigger.qci = bearerM2mTriggerDefault.qci;
+	toolM2mTrigger.ptr_appContainer = &m2mTriggerServerApps;
+	toolM2mTrigger.ptr_netDevContainer = &ueM2mTriggerDevs;
+	statsToolsList.push_back(toolM2mTrigger);
+
+	toolM2mRegular.type = "M2M Regular All";
+	toolM2mRegular.qci = EpsBearer::Qci(0);
+	toolM2mRegular.ptr_appContainer = &m2mRegularServerApps;
+	toolM2mRegular.ptr_netDevContainer = &ueM2mRegularDevs;
+	statsToolsList.push_back(toolM2mRegular);
+
+	for (int i = 0; i < ueM2mRegularQciDevs.size(); i++) {
+		StatsTools_s tool;
+		tool.type = "M2M Regular";
+		tool.qci = bearerM2mRegularList.at(i).qci;
+		tool.ptr_appContainer = &(m2mRegularQciServerApps.at(i));
+		tool.ptr_netDevContainer = &(ueM2mRegularQciDevs.at(i));
+		statsToolsList.push_back(tool);
 	}
-	std::cout << "\tAvg Throughput: " << (ueH2hDevs.GetN() > 0 ? avgThroughput / ueH2hDevs.GetN() : 0.0)
-			<< " mbps" << std::endl;
-	std::cout << "\tServer rx packets: " << serverApp->GetReceivedPackets() << std::endl;
-	std::cout << "\tServer rx bytes: " << serverApp->GetReceivedBytes() << std::endl;
-	std::cout << "\tServer lost packets: " << serverApp->GetLostPackets() << std::endl;
-	std::cout << "\tServer avg delay: "
-			<< ((serverApp->GetReceivedPackets() > 0) ? avgDelay / serverApp->GetReceivedPackets() : 0.0)
-			<< " ms" << std::endl;
-	std::cout << "\tServer avg packet lost delay: "
-			<< ((serverApp->GetLostPackets() > 0) ? avgLostDelay / serverApp->GetLostPackets() : 0.0) << " ms"
-			<< std::endl;
-	std::cout << "\tClient tx packets: " << clientSumPacketTx << std::endl;
 
-	std::cout << "\nM2M Trigger with " << ueM2mTriggerDevs.GetN() << " user(s)" << std::endl;
-	avgThroughput = 0.0;
-	serverApp = m2mTriggerServerHelper.GetServer();
-	avgDelay = serverApp->GetReceivedSumDelay().GetMilliSeconds();
-	avgLostDelay = serverApp->GetLostSumDelay().GetMilliSeconds();
-	clientSumPacketTx = 0;
-	for (unsigned int i = 0; i < ueM2mTriggerDevs.GetN(); i++) {
-		uint16_t rnti = ueM2mTriggerDevs.Get(i)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti();
-		int tb = 0;
-		std::map<uint16_t, int>::iterator it = ulTbMap.find(rnti);
-		if (it != ulTbMap.end())
-			tb = it->second;
-		avgThroughput += (8 * tb) / (simTime * 1024 * 1024); // to mbps
+	std::ostringstream ossGeral, ossUe;
+	ossGeral << "m2m-stats-geral-s(" << scheduler << ")-h2h(" << ueH2hNodes.GetN() << ")-m2mT("
+			<< ueM2mTriggerNodes.GetN() << ")-m2mR(" << ueM2mRegularNodes.GetN() << ")-" << currentExecution
+			<< ".csv";
+	std::ofstream statsGeralFile(ossGeral.str().c_str(), std::ios::out);
+	statsGeralFile
+			<< "Type; Size; Sim Time (s); Qci; TB (KiB); Avg TB; Throughput TB (kbps); Fairness TB; Tx Packets; Tx (KiB); "
+			<< " Throughput Tx (kbps); Fairness Tx; "
+			<< "Rx Packets; Rx (KiB); Rx Packets > Delay; Rx (KiB) > Max Delay; Packets Lost; "
+			<< " Avg Delay (ms); Avg Delay > Max Delay (ms)\n";
 
-		std::map<Ptr<NetDevice>, int>::iterator itClientTx = clientTxMap.find(ueM2mTriggerDevs.Get(i));
-		if (itClientTx != clientTxMap.end()) {
-			clientSumPacketTx += itClientTx->second;
-		}
+	ossUe << "m2m-stats-device-s(" << scheduler << ")-h2h(" << ueH2hNodes.GetN() << ")-m2mT("
+			<< ueM2mTriggerNodes.GetN() << ")-m2mR(" << ueM2mRegularNodes.GetN() << ")-" << currentExecution
+			<< ".csv";
+	std::ofstream statsUeFile(ossUe.str().c_str(), std::ios::out);
+	statsUeFile << "RNTI;QCI index;TB bytes;Tx Packets;Tx bytes\n";
 
-//		std::cout << "\tRNTI " << rnti << " tb " << tb << "  thr " << (double) tb / simTime
-//				<< std::endl;
-	}
-	std::cout << "\tAvg Throughput: "
-			<< (ueM2mTriggerDevs.GetN() > 0 ? avgThroughput / ueM2mTriggerDevs.GetN() : 0.0) << " mbps"
-			<< std::endl;
-	std::cout << "\tServer rx packets: " << serverApp->GetReceivedPackets() << std::endl;
-	std::cout << "\tServer rx bytes: " << serverApp->GetReceivedBytes() << std::endl;
-	std::cout << "\tServer lost packets: " << serverApp->GetLostPackets() << std::endl;
-	std::cout << "\tServer avg delay: "
-			<< ((serverApp->GetReceivedPackets() > 0) ? avgDelay / serverApp->GetReceivedPackets() : 0.0)
-			<< " ms" << std::endl;
-	std::cout << "\tServer avg packet lost delay: "
-			<< ((serverApp->GetLostPackets() > 0) ? avgLostDelay / serverApp->GetLostPackets() : 0.0) << " ms"
-			<< std::endl;
-	std::cout << "\tClient tx packets: " << clientSumPacketTx << std::endl;
-
-	std::cout << "\nM2M Regular with " << ueM2mRegularDevs.GetN() << " user(s)" << std::endl;
-	avgThroughput = 0.0;
-	for (unsigned int i = 0; i < ueM2mRegularDevs.GetN(); i++) {
-		uint16_t rnti = ueM2mRegularDevs.Get(i)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti();
-		int tb = 0;
-		std::map<uint16_t, int>::iterator it = ulTbMap.find(rnti);
-		if (it != ulTbMap.end())
-			tb = it->second;
-		avgThroughput += (8 * tb) / (simTime * 1024 * 1024); // to mbps
-
-//		std::cout << "\tRNTI " << rnti << " tb " << tb << "  thr " << (double) tb / simTime
-//				<< std::endl;
-	}
-	std::cout << "\tAvg Throughput: "
-			<< (ueM2mRegularDevs.GetN() > 0 ? avgThroughput / ueM2mRegularDevs.GetN() : 0.0) << " mbps"
-			<< std::endl;
-	for (unsigned int i = 0; i < bearerM2mRegularList.size(); i++) {
-		serverApp = m2mRegularServerHelperList.at(i).GetServer();
-		avgDelay = serverApp->GetReceivedSumDelay().GetMilliSeconds();
-		avgLostDelay = serverApp->GetLostSumDelay().GetMilliSeconds();
-		clientSumPacketTx = 0;
-
-		std::cout << "\tQoS delay: " << serverApp->GetMaxPacketDelay().GetMilliSeconds() << " ms";
-		std::cout << " with " << ueM2mRegularClassDevs.at(i).GetN() << " user(s)" << std::endl;
-		std::cout << "\t\tServer rx packets: " << serverApp->GetReceivedPackets() << std::endl;
-		std::cout << "\t\tServer rx bytes: " << serverApp->GetReceivedBytes() << std::endl;
-		std::cout << "\t\tServer lost packets: " << serverApp->GetLostPackets() << std::endl;
-		std::cout << "\t\tServer avg delay: "
-				<< ((serverApp->GetReceivedPackets() > 0) ? avgDelay / serverApp->GetReceivedPackets() : 0.0)
-				<< " ms" << std::endl;
-		std::cout << "\t\tServer avg packet lost delay: "
-				<< ((serverApp->GetLostPackets() > 0) ? avgLostDelay / serverApp->GetLostPackets() : 0.0)
-				<< " ms" << std::endl;
-
-		NetDeviceContainer netDev = ueM2mRegularClassDevs.at(i);
+	for (std::vector<StatsTools_s>::iterator it = statsToolsList.begin(); it != statsToolsList.end(); it++) {
+		NetDeviceContainer *ptrNetDevCont = it->ptr_netDevContainer;
 		NetDeviceContainer::Iterator itNetDev;
-		std::map<Ptr<NetDevice>, int>::iterator itClientTx;
-		for (itNetDev = netDev.Begin(); itNetDev != netDev.End(); itNetDev++) {
-			itClientTx = clientTxMap.find(*itNetDev);
+		ApplicationContainer *ptrAppCont = it->ptr_appContainer;
+		ApplicationContainer::Iterator itApp;
+		int qciIndex = it->qci;
+		unsigned int classSize = 0;
+		long double tbBytes = 0;
+		double avgTb = 0.0;
+		double throughputTb = 0.0;
+		double fairnessTb = 0.0;
+		unsigned int txPackets = 0;
+		long double txBytes = 0;
+		double avgTx = 0.0;
+		double throughputTx = 0.0;
+		double fairnessTx = 0.0;
+		unsigned int rxPackets = 0;
+		long double rxBytes = 0;
+		unsigned int rxPktExceedDelay = 0;
+		unsigned long rxBytesExceedDelay = 0;
+		unsigned int packetLost = 0;
+		double avgDelay = 0.0;
+		double avgExceedDelay = 0.0;
+
+		for (itNetDev = ptrNetDevCont->Begin(); itNetDev != ptrNetDevCont->End(); itNetDev++) {
+			uint16_t rnti = (*itNetDev)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti();
+			std::map<uint16_t, unsigned long>::iterator it = ulTbMap.find(rnti);
+			unsigned int devTbBytes = 0;
+			unsigned int devTxPackets = 0;
+			unsigned int devTxBytes = 0;
+			if (it != ulTbMap.end()) {
+				devTbBytes = it->second;
+			}
+			std::map<Ptr<NetDevice>, std::pair<unsigned int, unsigned long> >::iterator itClientTx =
+					clientTxMap.find(*itNetDev);
 			if (itClientTx != clientTxMap.end()) {
-				clientSumPacketTx += itClientTx->second;
+				devTxPackets = itClientTx->second.first;
+				devTxBytes = itClientTx->second.second;
+			}
+
+			tbBytes += devTbBytes / 1024; // bytes => kbytes
+			txBytes += devTxBytes / 1024;
+			fairnessTb += (devTbBytes / 1024) * (devTbBytes / 1024); // bytes => kbytes
+			txPackets += devTxPackets;
+			fairnessTx += (devTxBytes / 1024) * (devTxBytes / 1024);
+		}
+		int delayCount = 0;
+		int delayExceedCount = 0;
+		for (itApp = ptrAppCont->Begin(); itApp != ptrAppCont->End(); itApp++) {
+			Ptr<M2mUdpServer> server = DynamicCast<M2mUdpServer>(*itApp);
+			rxPackets += server->GetReceivedPackets() + server->GetLostPackets();
+			rxBytes += (server->GetReceivedBytes() + server->GetLostBytes()) / 1024;
+			rxPktExceedDelay += server->GetLostPackets();
+			rxBytesExceedDelay += server->GetLostBytes() / 1024;
+			if (server->GetReceivedPackets() > 0) {
+				avgDelay += server->GetReceivedSumDelay().GetMilliSeconds() / server->GetReceivedPackets();
+				delayCount++;
+			}
+			if (server->GetLostPackets() > 0) {
+				avgExceedDelay += server->GetLostSumDelay().GetMilliSeconds() / server->GetLostPackets();
+				delayExceedCount++;
 			}
 		}
-		std::cout << "\t\tClient tx packets: " << clientSumPacketTx << std::endl;
+		classSize = ptrNetDevCont->GetN();
+		if (classSize > 0) {
+			avgTb = tbBytes / classSize;
+			avgTx = txBytes / classSize;
+			throughputTb = 8 * avgTb / simTime;
+			throughputTx = 8 * avgTx / simTime;
+			if (fairnessTb != 0.0)
+				// Convert tbBytes to kbytes
+				fairnessTb = (tbBytes * tbBytes) / (fairnessTb * classSize); // Jain's fairness index
+			if (fairnessTx != 0.0)
+				fairnessTx = (txBytes * txBytes) / (fairnessTx * classSize); // Jain's fairness index
+			fairnessTb = std::max(0.0, std::min(1.0, fairnessTb));
+			fairnessTx = std::max(0.0, std::min(1.0, fairnessTx));
+		}
+		if (txPackets > rxPackets)
+			packetLost = txPackets - rxPackets;
+		if (delayCount > 0)
+			avgDelay /= delayCount;
+		if (delayExceedCount > 0)
+			avgExceedDelay /= delayExceedCount;
+
+		statsGeralFile << it->type << ";" << classSize << ";" << simTime << ";" << qciIndex << ";" << tbBytes
+				<< ";" << avgTb << ";" << throughputTb << ";" << fairnessTb << ";" << txPackets << ";"
+				<< txBytes << ";" << throughputTx << ";" << fairnessTx << ";" << rxPackets << ";" << rxBytes
+				<< ";" << rxPktExceedDelay << ";" << rxBytesExceedDelay << ";" << packetLost << ";"
+				<< avgDelay << ";" << avgExceedDelay << "\n";
+	}
+
+	for (NetDeviceContainer::Iterator itNetDev = ueAllDevs.Begin(); itNetDev != ueAllDevs.End(); itNetDev++) {
+		uint16_t rnti = (*itNetDev)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti();
+		std::map<uint16_t, unsigned long>::iterator it = ulTbMap.find(rnti);
+
+		unsigned long devTbBytes = 0;
+		int devQciIndex = 0;
+		unsigned int devTxPackets = 0;
+		unsigned long devTxBytes = 0;
+
+		if (it != ulTbMap.end()) {
+			devTbBytes = it->second;
+		}
+		std::map<Ptr<NetDevice>, std::pair<unsigned int, unsigned long> >::iterator itClientTx =
+				clientTxMap.find(*itNetDev);
+		if (itClientTx != clientTxMap.end()) {
+			devTxPackets += itClientTx->second.first;
+			devTxBytes += itClientTx->second.second;
+		}
+		std::map<Ptr<Node>, EpsBearer>::iterator itBearer = ueBearerMap.find((*itNetDev)->GetNode());
+		if (itBearer != ueBearerMap.end()) {
+			devQciIndex = itBearer->second.qci;
+		}
+
+		statsUeFile << rnti << ";" << devQciIndex << ";" << devTbBytes << ";" << devTxPackets << ";"
+				<< devTxBytes << "\n";
 	}
 
 	Simulator::Destroy();
+	statsGeralFile.close();
+	statsUeFile.close();
+
 	return 0;
 }

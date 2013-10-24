@@ -51,7 +51,8 @@ TypeId M2mUdpServer::GetTypeId(void) {
 }
 
 M2mUdpServer::M2mUdpServer() :
-		m_rxPackets(0), m_rxSize(0), m_lostPackets(0), m_lostDelay(Time(0.0)), m_rxDelay(Time(0.0)) {
+		m_rxPackets(0), m_rxSize(0), m_lostPackets(0), m_lostSize(0), m_lostDelay(Time(0.0)), m_rxDelay(
+				Time(0.0)) {
 }
 
 M2mUdpServer::~M2mUdpServer() {
@@ -63,6 +64,10 @@ Time M2mUdpServer::GetMaxPacketDelay() const {
 
 uint32_t M2mUdpServer::GetLostPackets() const {
 	return m_lostPackets;
+}
+
+uint64_t M2mUdpServer::GetLostBytes() const {
+	return m_lostSize;
 }
 
 uint32_t M2mUdpServer::GetReceivedPackets() const {
@@ -123,6 +128,7 @@ void M2mUdpServer::HandleRead(Ptr<Socket> socket) {
 	Address from;
 	while ((packet = socket->RecvFrom(from))) {
 		if (packet->GetSize() > 0) {
+			uint32_t size = packet->GetSize();
 			SeqTsHeader seqTs;
 			packet->RemoveHeader(seqTs);
 			Time timeTx = seqTs.GetTs();
@@ -134,10 +140,11 @@ void M2mUdpServer::HandleRead(Ptr<Socket> socket) {
 					<< " delay " << delayTime.GetMilliSeconds() << " max delay " << m_maxDelay.GetMilliSeconds());
 			if (delayTime > m_maxDelay && m_maxDelay.GetDouble() > 0.0) {
 				m_lostPackets++;
+				m_lostSize += size;
 				m_lostDelay += delayTime;
 			} else {
 				m_rxPackets++;
-				m_rxSize += packet->GetSize();
+				m_rxSize += size;
 				m_rxDelay += delayTime;
 			}
 		}

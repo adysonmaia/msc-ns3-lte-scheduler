@@ -47,24 +47,12 @@ public:
 	static TypeId GetTypeId(void);
 	M2mUdpServer();
 	virtual ~M2mUdpServer();
-	/**
-	 * returns the number of lost packets
-	 * \return the number of lost packets
-	 */
-	uint32_t GetLostPackets() const;
-
-	/**
-	 * \brief returns the number of received packets
-	 * \return the number of received packets
-	 */
-	uint32_t GetReceivedPackets() const;
-
-	uint64_t GetReceivedBytes() const;
-
-	Time GetReceivedSumDelay() const;
-
 	Time GetMaxPacketDelay() const;
-
+	uint32_t GetReceivedPackets() const;
+	uint64_t GetReceivedBytes() const;
+	Time GetReceivedSumDelay() const;
+	uint32_t GetLostPackets() const;
+	uint64_t GetLostBytes() const;
 	Time GetLostSumDelay() const;
 protected:
 	virtual void DoDispose(void);
@@ -83,6 +71,7 @@ private:
 	uint32_t m_rxPackets;
 	uint64_t m_rxSize;
 	uint32_t m_lostPackets;
+	uint64_t m_lostSize;
 	Time m_lostDelay;
 	Time m_maxDelay;
 	Time m_rxDelay;
