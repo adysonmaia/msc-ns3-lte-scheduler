@@ -4,7 +4,7 @@ path=`pwd`
 simulator="$path/waf --run='m2m-lte"
 
 simTime=2
-intTrigger=0.5
+intTrigger=0.05
 minCqi=0
 maxCqi=11
 
@@ -124,7 +124,7 @@ do
 
     # Scheduler: 2 - H2H: 20 - M2M T: 66  - M2M R: 134
     echo -e "Scheduler: 2 - H2H: 20 - M2M T: 66  - M2M R: 134 - index: $index"
-    params="--scheduler=1 --simTime=$simTime --nH2H=20 --nM2MTrigger=66 --nM2MRegular=134 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
+    params="--scheduler=2 --simTime=$simTime --nH2H=20 --nM2MTrigger=66 --nM2MRegular=134 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
     command="$simulator $params'"
     eval $command
 
