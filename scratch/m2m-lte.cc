@@ -74,7 +74,7 @@ void ClientTxCallback(std::map<Ptr<NetDevice>, std::pair<unsigned int, unsigned 
 	}
 }
 
-std::vector<EpsBearer> GetAvailableM2mRegularEpsBearers(double simulationTime) {
+std::vector<EpsBearer> GetAvailableM2mRegularEpsBearers(double simulationTime, int minCqiIndex = 0, int maxCqiIndex = 11) {
 	std::vector<EpsBearer> response;
 	EpsBearer allBearers[] = { EpsBearer(EpsBearer::NGBR_M2M_REGULAR_REPORT_1), EpsBearer(
 			EpsBearer::NGBR_M2M_REGULAR_REPORT_2), EpsBearer(EpsBearer::NGBR_M2M_REGULAR_REPORT_3), EpsBearer(
@@ -84,7 +84,7 @@ std::vector<EpsBearer> GetAvailableM2mRegularEpsBearers(double simulationTime) {
 			EpsBearer::NGBR_M2M_REGULAR_REPORT_10), EpsBearer(EpsBearer::NGBR_M2M_REGULAR_REPORT_11) };
 
 	simulationTime = simulationTime * 1000; // s => ms
-	for (int i = 4; i < 10; i++) {
+	for (int i = minCqiIndex; i < maxCqiIndex; i++) {
 		if (allBearers[i].GetPacketDelayBudgetMs() < simulationTime) {
 			response.push_back(allBearers[i]);
 		}
@@ -115,6 +115,7 @@ int main(int argc, char *argv[]) {
 	double minPercentRBForM2m = (double) minRBPerM2m / bandwidth;
 	bool harqEnabled = true;
 	int currentExecution = 0;
+	int minM2mRegularCqi = 0, maxM2mRegularCqi = 11;
 
 	Config::SetDefault("ns3::LteEnbRrc::SrsPeriodicity", UintegerValue(320));
 	Config::SetDefault("ns3::LteEnbNetDevice::UlBandwidth", UintegerValue(bandwidth));
@@ -132,6 +133,10 @@ int main(int argc, char *argv[]) {
 	cmd.AddValue("cellRadius", "Radius [m] of cell", maxRadius);
 	cmd.AddValue("simTime", "Total duration of the simulation [s])", simTime);
 	cmd.AddValue("nExec", "number of current execution", currentExecution);
+	cmd.AddValue("intervalM2MTrigger", "interval (exponencial mean) between packet transmission for m2m Trigger", interPacketM2mTrigger);
+	cmd.AddValue("minM2MRegularCqi", "min cqi index for m2m regular [0, 11]", minM2mRegularCqi);
+	cmd.AddValue("maxM2MRegularCqi", "max cqi index for m2m regular [0, 11]", maxM2mRegularCqi);
+
 	cmd.Parse(argc, argv);
 
 	ConfigStore inputConfig;
@@ -291,7 +296,7 @@ int main(int argc, char *argv[]) {
 	lteHelper->ActivateDedicatedEpsBearer(ueH2hDevs, bearerH2h, tftH2h);
 	for (uint32_t u = 0; u < ueH2hNodes.GetN(); ++u) {
 		UdpClientHelper appHelper(remoteHostAddr, remoteH2hPort);
-		appHelper.SetAttribute("Interval", TimeValue(MilliSeconds(interPacketH2h)));
+		appHelper.SetAttribute("Interval", TimeValue(MilliSeconds((int)interPacketH2h)));
 		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
 		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeH2h));
 
@@ -319,7 +324,7 @@ int main(int argc, char *argv[]) {
 	lteHelper->ActivateDedicatedEpsBearer(ueM2mTriggerDevs, bearerM2mTrigger, tftM2mTrigger);
 	for (uint32_t u = 0; u < ueM2mTriggerNodes.GetN(); ++u) {
 		M2mUdpClientHelper appHelper(remoteHostAddr, remoteM2mTriggerPort);
-		appHelper.SetAttribute("Interval", TimeValue(MilliSeconds(0.0)));
+		appHelper.SetAttribute("Interval", TimeValue(MilliSeconds(0)));
 		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
 		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeM2m));
 		appHelper.SetAttribute("RandomInterval",
@@ -337,7 +342,7 @@ int main(int argc, char *argv[]) {
 //	m2mTriggerServerHelper.GetServer()->SetAttribute("StatsStartTime", TimeValue(statsStartTime));
 
 	// M2M Regular Report
-	std::vector<EpsBearer> bearerM2mRegularList = GetAvailableM2mRegularEpsBearers(simTime);
+	std::vector<EpsBearer> bearerM2mRegularList = GetAvailableM2mRegularEpsBearers(simTime, minM2mRegularCqi, maxM2mRegularCqi);
 	ueM2mRegularQciDevs.resize(bearerM2mRegularList.size(), NetDeviceContainer());
 	for (uint32_t u = 0; u < ueM2mRegularDevs.GetN(); u++) {
 		Ptr<NetDevice> ueDevice = ueM2mRegularDevs.Get(u);
@@ -427,7 +432,7 @@ int main(int argc, char *argv[]) {
 	toolM2mRegular.ptr_netDevContainer = &ueM2mRegularDevs;
 	statsToolsList.push_back(toolM2mRegular);
 
-	for (int i = 0; i < ueM2mRegularQciDevs.size(); i++) {
+	for (unsigned int i = 0; i < ueM2mRegularQciDevs.size(); i++) {
 		StatsTools_s tool;
 		tool.type = "M2M Regular";
 		tool.qci = bearerM2mRegularList.at(i).qci;

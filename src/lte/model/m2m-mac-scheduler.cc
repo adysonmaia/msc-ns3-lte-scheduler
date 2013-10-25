@@ -1892,7 +1892,7 @@ void M2mMacScheduler::SchedUlHarq(const std::vector<uint16_t> &ueList, M2mRbAllo
 			continue;
 		}
 		if (rbStart + dci.m_rbLen <= rbMap.GetSize() && rbMap.IsFree(rbStart, dci.m_rbLen)) {
-			rbMap.Allocate(rbStart, dci.m_rbLen);
+			rbMap.Allocate(dci.m_rnti, rbStart, dci.m_rbLen);
 			dci.m_rbStart = rbStart;
 			rbStart += dci.m_rbLen;
 		} else {
