@@ -99,6 +99,7 @@ def build(bld):
         'model/lte-asn1-header.cc',
         'model/lte-rrc-header.cc',
         'model/m2m-mac-scheduler.cc',
+        'helper/m2m-scheduler-param.cc',
         ]
 
     module_test = bld.create_ns3_module_test_library('lte')
@@ -244,6 +245,7 @@ def build(bld):
         'model/lte-asn1-header.h',
         'model/lte-rrc-header.h',
         'model/m2m-mac-scheduler.h',
+        'helper/m2m-scheduler-param.h',
         ]
 
     if (bld.env['ENABLE_EXAMPLES']):

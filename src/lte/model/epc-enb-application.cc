@@ -259,7 +259,7 @@ EpcEnbApplication::RecvFromLteSocket (Ptr<Socket> socket)
   found = packet->FindFirstMatchingByteTag(m2mTag);
   if (found) {
 	  Time timeDiff = Simulator::Now() - m2mTag.GetTxTime();
-	  bool delayExceeded = (m2mTag.GetDelayBudget() > 0 && timeDiff.GetMilliSeconds() > m2mTag.GetDelayBudget());
+	  bool delayExceeded = (m2mTag.GetMaxPacketDelay() > 0 && timeDiff.GetMilliSeconds() > m2mTag.GetMaxPacketDelay());
 	  std::map<uint16_t, M2mEpcStats_s>::iterator itStats = m_m2mPgwStats.find(rnti);
 	  if (itStats == m_m2mPgwStats.end()) {
 		  M2mEpcStats_s statsValue;

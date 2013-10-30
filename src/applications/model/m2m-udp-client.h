@@ -71,7 +71,7 @@ private:
 	RandomVariable m_randInterval;
 	double m_coefRandInterval;
 	uint32_t m_size;
-	uint32_t m_delayBudget;
+	uint32_t m_maxDelay;
 
 	uint32_t m_sent;
 	Ptr<Socket> m_socket;

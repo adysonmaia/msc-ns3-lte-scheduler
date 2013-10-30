@@ -34,7 +34,7 @@ M2mTag::M2mTag(uint32_t delayBudget) :
 M2mTag::~M2mTag() {
 }
 
-uint32_t M2mTag::GetDelayBudget() const {
+uint32_t M2mTag::GetMaxPacketDelay() const {
 	return m_delay;
 }
 
@@ -46,7 +46,7 @@ void M2mTag::SetTxTime(Time txTime) {
 	m_txTime = txTime.GetTimeStep();
 }
 
-void M2mTag::SetDelayBudget(uint64_t delay) {
+void M2mTag::SetMaxPacketDelay(uint32_t delay) {
 	m_delay = delay;
 }
 

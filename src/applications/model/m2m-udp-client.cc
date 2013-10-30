@@ -57,8 +57,8 @@ TypeId M2mUdpClient::GetTypeId(void) {
 					"PacketSize",
 					"Size of packets generated. The minimum packet size is 12 bytes which is the size of the header carrying the sequence number and the time stamp.",
 					UintegerValue(1024), MakeUintegerAccessor(&M2mUdpClient::m_size),
-					MakeUintegerChecker<uint32_t>(12, 1500)).AddAttribute("DelayBudget", "max delay",
-					UintegerValue(0), MakeUintegerAccessor(&M2mUdpClient::m_delayBudget),
+					MakeUintegerChecker<uint32_t>(12, 1500)).AddAttribute("MaxPacketDelay", "max delay",
+					UintegerValue(0), MakeUintegerAccessor(&M2mUdpClient::m_maxDelay),
 					MakeUintegerChecker<uint32_t>());
 	return tid;
 }
@@ -146,7 +146,7 @@ void M2mUdpClient::Send(void) {
 	seqTs.SetSeq(m_sent);
 	Ptr<Packet> p = Create<Packet>(m_size - (8 + 4)); // 8+4 : the size of the seqTs header
 	p->AddHeader(seqTs);
-	M2mTag m2mTag(m_delayBudget);
+	M2mTag m2mTag(m_maxDelay);
 	p->AddByteTag(m2mTag);
 
 	std::stringstream peerAddressStringStream;

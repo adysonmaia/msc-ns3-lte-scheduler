@@ -16,14 +16,14 @@ namespace ns3 {
 class M2mTag: public Tag {
 public:
 	M2mTag();
-	M2mTag(uint32_t delayBudget);
-	M2mTag(uint32_t delayBudget, uint64_t txTime);
+	M2mTag(uint32_t delay);
+	M2mTag(uint32_t delay, uint64_t txTime);
 	virtual ~M2mTag();
 
-	uint32_t GetDelayBudget() const;
+	uint32_t GetMaxPacketDelay() const;
 	Time GetTxTime() const;
 	void SetTxTime(Time txTime);
-	void SetDelayBudget(uint64_t delay);
+	void SetMaxPacketDelay(uint32_t delay);
 
 	static TypeId GetTypeId(void);
 	virtual TypeId GetInstanceTypeId(void) const;
