@@ -27,7 +27,7 @@
 #include "ns3/buildings-helper.h"
 #include "ns3/ipv4-global-routing-helper.h"
 #include "ns3/internet-module.h"
-#include "ns3/point-to-point-helper.h"
+#include "ns3/point-to-point-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/flow-monitor-helper.h"
 #include <iostream>
@@ -74,7 +74,8 @@ void ClientTxCallback(std::map<Ptr<NetDevice>, std::pair<unsigned int, unsigned 
 	}
 }
 
-std::vector<EpsBearer> GetAvailableM2mRegularEpsBearers(double simulationTime, int minCqiIndex = 0, int maxCqiIndex = 11) {
+std::vector<EpsBearer> GetAvailableM2mRegularEpsBearers(double simulationTime, int minCqiIndex = 0,
+		int maxCqiIndex = 11) {
 	std::vector<EpsBearer> response;
 	EpsBearer allBearers[] = { EpsBearer(EpsBearer::NGBR_M2M_REGULAR_REPORT_1), EpsBearer(
 			EpsBearer::NGBR_M2M_REGULAR_REPORT_2), EpsBearer(EpsBearer::NGBR_M2M_REGULAR_REPORT_3), EpsBearer(
@@ -107,10 +108,9 @@ int main(int argc, char *argv[]) {
 	unsigned int packetSizeM2m = 125; // bytes
 	unsigned int packetSizeH2h = 1200; // bytes
 	double interPacketM2mTrigger = 30; // s
-//	double interPacketM2mTrigger = 0.025; // s
+//	double interPacketM2mTrigger = 0.05; // s
 	double interPacketH2h = 75; // ms
 	unsigned int minRBPerM2m = 3;
-//	unsigned int minRBPerM2m = bandwidth;
 	unsigned int minRBPerH2h = 3;
 	double minPercentRBForM2m = (double) minRBPerM2m / bandwidth;
 	bool harqEnabled = true;
@@ -133,7 +133,8 @@ int main(int argc, char *argv[]) {
 	cmd.AddValue("cellRadius", "Radius [m] of cell", maxRadius);
 	cmd.AddValue("simTime", "Total duration of the simulation [s])", simTime);
 	cmd.AddValue("nExec", "number of current execution", currentExecution);
-	cmd.AddValue("intervalM2MTrigger", "interval (exponencial mean) between packet transmission for m2m Trigger", interPacketM2mTrigger);
+	cmd.AddValue("intervalM2MTrigger",
+			"interval (exponencial mean) between packet transmission for m2m Trigger", interPacketM2mTrigger);
 	cmd.AddValue("minM2MRegularCqi", "min cqi index for m2m regular [0, 11]", minM2mRegularCqi);
 	cmd.AddValue("maxM2MRegularCqi", "max cqi index for m2m regular [0, 11]", maxM2mRegularCqi);
 
@@ -171,7 +172,8 @@ int main(int argc, char *argv[]) {
 		enableM2m = true;
 		break;
 	}
-	lteHelper->SetSchedulerAttribute("UlGrantMcs", UintegerValue(7));
+//	lteHelper->SetSchedulerAttribute("UlGrantMcs", UintegerValue(7));
+	lteHelper->SetSchedulerAttribute("UlGrantMcs", UintegerValue(0));
 	lteHelper->SetSchedulerAttribute("HarqEnabled", BooleanValue(harqEnabled));
 
 	// Uncomment to enable logging
@@ -179,7 +181,8 @@ int main(int argc, char *argv[]) {
 //	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
 //	LogComponentEnable("M2mUdpServer", LOG_LEVEL_INFO);
 //	LogComponentEnable("M2mUdpClientApplication", LOG_LEVEL_INFO);
-//	LogComponentEnable("Queue", LOG_LEVEL_ALL);
+//	LogComponentEnable("EpcEnbApplication", LOG_LEVEL_ALL);
+//	LogComponentEnable("M2mTag", LOG_LEVEL_ALL);
 
 	// Create Nodes: eNodeB and UE
 	NodeContainer enbNodes;
@@ -284,6 +287,7 @@ int main(int argc, char *argv[]) {
 	ApplicationContainer m2mRegularServerApps;
 	std::vector<ApplicationContainer> m2mRegularQciServerApps;
 	std::map<Ptr<Node>, EpsBearer> ueBearerMap;
+	Ptr<EpcEnbApplication> enbApp = enbNodes.Get(0)->GetApplication(0)->GetObject<EpcEnbApplication>();
 
 	// H2H
 	EpsBearer bearerH2h = EpsBearer(EpsBearer::GBR_CONV_VIDEO);
@@ -295,10 +299,17 @@ int main(int argc, char *argv[]) {
 	tftH2h->Add(pfH2h);
 	lteHelper->ActivateDedicatedEpsBearer(ueH2hDevs, bearerH2h, tftH2h);
 	for (uint32_t u = 0; u < ueH2hNodes.GetN(); ++u) {
-		UdpClientHelper appHelper(remoteHostAddr, remoteH2hPort);
-		appHelper.SetAttribute("Interval", TimeValue(MilliSeconds((int)interPacketH2h)));
+		M2mUdpClientHelper appHelper(remoteHostAddr, remoteM2mTriggerPort);
+		appHelper.SetAttribute("Interval", TimeValue(MilliSeconds((int) interPacketH2h)));
 		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
 		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeH2h));
+		appHelper.SetAttribute("CoefficientOfRandomInterval", DoubleValue(0.0));
+		appHelper.SetAttribute("DelayBudget", UintegerValue(bearerH2h.GetPacketDelayBudgetMs()));
+
+//		UdpClientHelper appHelper(remoteHostAddr, remoteH2hPort);
+//		appHelper.SetAttribute("Interval", TimeValue(MilliSeconds((int) interPacketH2h)));
+//		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
+//		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeH2h));
 
 		Ptr<Node> node = ueH2hNodes.Get(u);
 		allClientApps.Add(appHelper.Install(node));
@@ -329,6 +340,8 @@ int main(int argc, char *argv[]) {
 		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeM2m));
 		appHelper.SetAttribute("RandomInterval",
 				RandomVariableValue(ExponentialVariable(interPacketM2mTrigger)));
+		appHelper.SetAttribute("DelayBudget",
+				UintegerValue(bearerM2mTriggerDefault.GetPacketDelayBudgetMs()));
 
 		Ptr<Node> node = ueM2mTriggerNodes.Get(u);
 		allClientApps.Add(appHelper.Install(node));
@@ -342,7 +355,8 @@ int main(int argc, char *argv[]) {
 //	m2mTriggerServerHelper.GetServer()->SetAttribute("StatsStartTime", TimeValue(statsStartTime));
 
 	// M2M Regular Report
-	std::vector<EpsBearer> bearerM2mRegularList = GetAvailableM2mRegularEpsBearers(simTime, minM2mRegularCqi, maxM2mRegularCqi);
+	std::vector<EpsBearer> bearerM2mRegularList = GetAvailableM2mRegularEpsBearers(simTime, minM2mRegularCqi,
+			maxM2mRegularCqi);
 	ueM2mRegularQciDevs.resize(bearerM2mRegularList.size(), NetDeviceContainer());
 	for (uint32_t u = 0; u < ueM2mRegularDevs.GetN(); u++) {
 		Ptr<NetDevice> ueDevice = ueM2mRegularDevs.Get(u);
@@ -360,10 +374,19 @@ int main(int argc, char *argv[]) {
 		pf.remotePortEnd = port;
 		tft->Add(pf);
 		lteHelper->ActivateDedicatedEpsBearer(ueDevice, bearer, tft);
-		UdpClientHelper appHelper(remoteHostAddr, port);
+
+//		UdpClientHelper appHelper(remoteHostAddr, port);
+//		appHelper.SetAttribute("Interval", TimeValue(interval));
+//		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
+//		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeM2m));
+
+		M2mUdpClientHelper appHelper(remoteHostAddr, port);
 		appHelper.SetAttribute("Interval", TimeValue(interval));
 		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
 		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeM2m));
+		appHelper.SetAttribute("CoefficientOfRandomInterval", DoubleValue(0.0));
+		appHelper.SetAttribute("DelayBudget", UintegerValue(interval.GetMilliSeconds()));
+
 		allClientApps.Add(appHelper.Install(ueDevice->GetNode()));
 		ueM2mRegularQciDevs.at(u % bearerM2mRegularList.size()).Add(ueDevice);
 	}
@@ -481,6 +504,8 @@ int main(int argc, char *argv[]) {
 		unsigned int packetLost = 0;
 		double avgDelay = 0.0;
 		double avgExceedDelay = 0.0;
+		int delayCount = 0;
+		int delayExceedCount = 0;
 
 		for (itNetDev = ptrNetDevCont->Begin(); itNetDev != ptrNetDevCont->End(); itNetDev++) {
 			uint16_t rnti = (*itNetDev)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti();
@@ -503,24 +528,39 @@ int main(int argc, char *argv[]) {
 			fairnessTb += (devTbBytes / 1024) * (devTbBytes / 1024); // bytes => kbytes
 			txPackets += devTxPackets;
 			fairnessTx += (devTxBytes / 1024) * (devTxBytes / 1024);
-		}
-		int delayCount = 0;
-		int delayExceedCount = 0;
-		for (itApp = ptrAppCont->Begin(); itApp != ptrAppCont->End(); itApp++) {
+
+			M2mEpcStats_s ueStats = enbApp->GetM2mEpcStats(rnti);
+//			std::cout << "rnti " << rnti  << " tx packets  " << devTxPackets <<  " rx packets "  << ueStats.rx_packets <<  " lost " << ueStats.lost_packets << std::endl;
+
 			Ptr<M2mUdpServer> server = DynamicCast<M2mUdpServer>(*itApp);
-			rxPackets += server->GetReceivedPackets() + server->GetLostPackets();
-			rxBytes += (server->GetReceivedBytes() + server->GetLostBytes()) / 1024;
-			rxPktExceedDelay += server->GetLostPackets();
-			rxBytesExceedDelay += server->GetLostBytes() / 1024;
-			if (server->GetReceivedPackets() > 0) {
-				avgDelay += server->GetReceivedSumDelay().GetMilliSeconds() / server->GetReceivedPackets();
+			rxPackets += ueStats.rx_packets + ueStats.lost_packets;
+			rxBytes += (ueStats.rx_size + ueStats.lost_size) / 1024;
+			rxPktExceedDelay += ueStats.lost_packets;
+			rxBytesExceedDelay += ueStats.lost_size / 1024;
+			if (ueStats.rx_packets > 0) {
+				avgDelay += ueStats.rx_delay.GetMilliSeconds() / ueStats.rx_packets;
 				delayCount++;
 			}
-			if (server->GetLostPackets() > 0) {
-				avgExceedDelay += server->GetLostSumDelay().GetMilliSeconds() / server->GetLostPackets();
+			if (ueStats.lost_packets > 0) {
+				avgExceedDelay += ueStats.lost_delay.GetMilliSeconds() / ueStats.lost_packets;
 				delayExceedCount++;
 			}
 		}
+//		for (itApp = ptrAppCont->Begin(); itApp != ptrAppCont->End(); itApp++) {
+//			Ptr<M2mUdpServer> server = DynamicCast<M2mUdpServer>(*itApp);
+//			rxPackets += server->GetReceivedPackets() + server->GetLostPackets();
+//			rxBytes += (server->GetReceivedBytes() + server->GetLostBytes()) / 1024;
+//			rxPktExceedDelay += server->GetLostPackets();
+//			rxBytesExceedDelay += server->GetLostBytes() / 1024;
+//			if (server->GetReceivedPackets() > 0) {
+//				avgDelay += server->GetReceivedSumDelay().GetMilliSeconds() / server->GetReceivedPackets();
+//				delayCount++;
+//			}
+//			if (server->GetLostPackets() > 0) {
+//				avgExceedDelay += server->GetLostSumDelay().GetMilliSeconds() / server->GetLostPackets();
+//				delayExceedCount++;
+//			}
+//		}
 		classSize = ptrNetDevCont->GetN();
 		if (classSize > 0) {
 			avgTb = tbBytes / classSize;

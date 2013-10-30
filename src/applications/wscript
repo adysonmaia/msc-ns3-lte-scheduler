@@ -29,6 +29,7 @@ def build(bld):
         'helper/radvd-helper.cc',
         'model/m2m-udp-client.cc',
         'model/m2m-udp-server.cc',
+        'model/m2m-tag.cc',
         'helper/m2m-udp-client-helper.cc',
         'helper/m2m-udp-server-helper.cc',
         ]
@@ -67,6 +68,7 @@ def build(bld):
         'helper/radvd-helper.h',
         'model/m2m-udp-client.h',
         'model/m2m-udp-server.h',
+        'model/m2m-tag.h',
         'helper/m2m-udp-client-helper.h',
         'helper/m2m-udp-server-helper.h',
         ]

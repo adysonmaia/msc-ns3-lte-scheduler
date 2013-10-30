@@ -50,6 +50,10 @@ TypeId M2mUdpServer::GetTypeId(void) {
 	return tid;
 }
 
+TypeId M2mUdpServer::GetInstanceTypeId(void) const {
+	return GetTypeId();
+}
+
 M2mUdpServer::M2mUdpServer() :
 		m_rxPackets(0), m_rxSize(0), m_lostPackets(0), m_lostSize(0), m_lostDelay(Time(0.0)), m_rxDelay(
 				Time(0.0)) {

@@ -1412,6 +1412,14 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 			} else {
 				h2hRbDemand += m_minH2hRb;
 			}
+
+			/*if (itStats != m_flowStatsUl.end() && (*itStats).second.lastAverageResourcesAllocated > 0) {
+			 double demand = (*itStats).second.lastAverageResourcesAllocated;
+			 h2hRbDemand += std::max(m_minH2hRb, static_cast<uint16_t>(ceil(demand)));
+			 } else {
+			 h2hRbDemand += m_minH2hRb;
+			 }*/
+
 		}
 	}
 
@@ -1452,12 +1460,12 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 		uint16_t rnti = *itM2m;
 		std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(rnti);
 		std::map<uint16_t, uint16_t>::iterator itDelay = m2mCurrentDelay.find(rnti);
-		double priority = 2;
+		double priority = 0;
 		if (itStats != m_flowStatsUl.end() && m2mMaxLastAveragedThroughput > 0) {
-			priority -= (*itStats).second.lastAveragedThroughput / m2mMaxLastAveragedThroughput;
+			priority += 1 - (*itStats).second.lastAveragedThroughput / m2mMaxLastAveragedThroughput;
 		}
 		if (itDelay != m2mCurrentDelay.end() && m2mMaxDelay > 0) {
-			priority -= (*itDelay).second / m2mMaxDelay;
+			priority += 1 - (*itDelay).second / m2mMaxDelay;
 		}
 		priority = std::max(priority, 0.0);
 		priorityMap.insert(std::pair<uint16_t, double>(rnti, priority));

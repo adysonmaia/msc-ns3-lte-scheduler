@@ -45,6 +45,7 @@ namespace ns3 {
 class M2mUdpServer: public Application {
 public:
 	static TypeId GetTypeId(void);
+	virtual TypeId GetInstanceTypeId(void) const;
 	M2mUdpServer();
 	virtual ~M2mUdpServer();
 	Time GetMaxPacketDelay() const;

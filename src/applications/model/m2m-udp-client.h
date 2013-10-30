@@ -40,6 +40,7 @@ class Packet;
 class M2mUdpClient: public Application {
 public:
 	static TypeId GetTypeId(void);
+	virtual TypeId GetInstanceTypeId(void) const;
 
 	M2mUdpClient();
 
@@ -70,6 +71,7 @@ private:
 	RandomVariable m_randInterval;
 	double m_coefRandInterval;
 	uint32_t m_size;
+	uint32_t m_delayBudget;
 
 	uint32_t m_sent;
 	Ptr<Socket> m_socket;

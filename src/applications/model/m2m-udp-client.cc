@@ -28,6 +28,7 @@
 #include "ns3/uinteger.h"
 #include "ns3/double.h"
 #include "seq-ts-header.h"
+#include "m2m-tag.h"
 #include "m2m-udp-client.h"
 
 namespace ns3 {
@@ -56,8 +57,14 @@ TypeId M2mUdpClient::GetTypeId(void) {
 					"PacketSize",
 					"Size of packets generated. The minimum packet size is 12 bytes which is the size of the header carrying the sequence number and the time stamp.",
 					UintegerValue(1024), MakeUintegerAccessor(&M2mUdpClient::m_size),
-					MakeUintegerChecker<uint32_t>(12, 1500));
+					MakeUintegerChecker<uint32_t>(12, 1500)).AddAttribute("DelayBudget", "max delay",
+					UintegerValue(0), MakeUintegerAccessor(&M2mUdpClient::m_delayBudget),
+					MakeUintegerChecker<uint32_t>());
 	return tid;
+}
+
+TypeId M2mUdpClient::GetInstanceTypeId(void) const {
+	return GetTypeId();
 }
 
 M2mUdpClient::M2mUdpClient() {
@@ -139,6 +146,8 @@ void M2mUdpClient::Send(void) {
 	seqTs.SetSeq(m_sent);
 	Ptr<Packet> p = Create<Packet>(m_size - (8 + 4)); // 8+4 : the size of the seqTs header
 	p->AddHeader(seqTs);
+	M2mTag m2mTag(m_delayBudget);
+	p->AddByteTag(m2mTag);
 
 	std::stringstream peerAddressStringStream;
 	if (Ipv4Address::IsMatchingType(m_peerAddress)) {
