@@ -9,6 +9,7 @@
 #include <ns3/simulator.h>
 #include <cfloat>
 #include <ns3/m2m-lioumpas-mac-scheduler.h>
+#include <ns3/m2m-mac-scheduler.h>
 //#include "m2m-lioumpas-mac-scheduler.h"
 
 NS_LOG_COMPONENT_DEFINE("M2mLioumpasMacScheduler");

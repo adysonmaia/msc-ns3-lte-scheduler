@@ -319,7 +319,7 @@ void M2mMacScheduler::DoCschedUeConfigReq(
 //			<< (uint16_t) params.m_transmissionMode);
 	std::map<uint16_t, uint8_t>::iterator it = m_uesTxMode.find(params.m_rnti);
 	if (it == m_uesTxMode.end()) {
-		m_uesTxMode.insert(std::pair<uint16_t, double>(params.m_rnti, params.m_transmissionMode));
+		m_uesTxMode.insert(std::pair<uint16_t, uint8_t>(params.m_rnti, params.m_transmissionMode));
 		// generate HARQ buffers
 		m_dlHarqCurrentProcessId.insert(std::pair<uint16_t, uint8_t>(params.m_rnti, 0));
 		DlHarqProcessesStatus_t dlHarqPrcStatus;
@@ -2145,7 +2145,7 @@ void M2mMacScheduler::UpdateM2MAccessGrantTimers(const std::vector<uint16_t> &ue
 
 uint32_t M2mMacScheduler::GetUeUlMaxPacketDelay(uint16_t rnti) {
 	uint32_t delay = 0;
-	if (m_useM2mQosClass) {
+	if (!m_useM2mQosClass) {
 		delay = m_schedulerParam->GetMaxPacketDelay(rnti);
 	}
 
