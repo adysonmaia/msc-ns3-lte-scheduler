@@ -381,11 +381,15 @@ int main(int argc, char *argv[]) {
 //	m2mTriggerServerHelper.GetServer()->SetAttribute("StatsStartTime", TimeValue(statsStartTime));
 
 	// M2M Regular Report
-	Ptr<UniformRandomVariable> m2mRegularRandom = CreateObject<UniformRandomVariable>();
-	m2mRegularRandom->SetAttribute("Min", DoubleValue(50));
-	m2mRegularRandom->SetAttribute("Max", DoubleValue(1000 * simTime / 2));
 	std::vector<EpsBearer> bearerM2mRegularList = GetAvailableM2mRegularEpsBearers(simTime, minM2mRegularCqi,
 			maxM2mRegularCqi);
+	uint32_t minM2mRegularInterval = bearerM2mRegularList[0].GetPacketDelayBudgetMs();
+	uint32_t maxM2mRegularInterval =
+			bearerM2mRegularList[bearerM2mRegularList.size() - 1].GetPacketDelayBudgetMs() + 50;
+	maxM2mRegularInterval = std::min(maxM2mRegularInterval, static_cast<uint32_t>(1000 * simTime / 4));
+	Ptr<UniformRandomVariable> m2mRegularRandom = CreateObject<UniformRandomVariable>();
+	m2mRegularRandom->SetAttribute("Min", DoubleValue(minM2mRegularInterval));
+	m2mRegularRandom->SetAttribute("Max", DoubleValue(maxM2mRegularInterval));
 	ueM2mRegularQciDevs.resize(bearerM2mRegularList.size(), NetDeviceContainer());
 	for (uint32_t u = 0; u < ueM2mRegularDevs.GetN(); u++) {
 		Ptr<NetDevice> ueDevice = ueM2mRegularDevs.Get(u);
@@ -529,9 +533,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	std::ostringstream ossGeral, ossUe;
-	ossGeral << "m2m-stats-geral-s(" << scheduler << ")-h2h(" << ueH2hNodes.GetN() << ")-m2mT("
-			<< ueM2mTriggerNodes.GetN() << ")-m2mR(" << ueM2mRegularNodes.GetN() << ")-" << currentExecution
-			<< ".csv";
+	ossGeral << "m2m-stats-geral-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h(" << ueH2hNodes.GetN()
+			<< ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR(" << ueM2mRegularNodes.GetN() << ")-"
+			<< currentExecution << ".csv";
 	std::ofstream statsGeralFile(ossGeral.str().c_str(), std::ios::out);
 	statsGeralFile
 			<< "Type; Size; Sim Time (s); Qci; TB (KiB); Avg TB; Throughput TB (kbps); Fairness TB; Tx Packets; Tx (KiB); "
@@ -539,9 +543,9 @@ int main(int argc, char *argv[]) {
 			<< "Rx Packets; Rx (KiB); Rx Packets > Delay; Rx (KiB) > Max Delay; Packets Lost; "
 			<< " Avg Delay (ms); Avg Delay > Max Delay (ms)\n";
 
-	ossUe << "m2m-stats-device-s(" << scheduler << ")-h2h(" << ueH2hNodes.GetN() << ")-m2mT("
-			<< ueM2mTriggerNodes.GetN() << ")-m2mR(" << ueM2mRegularNodes.GetN() << ")-" << currentExecution
-			<< ".csv";
+	ossUe << "m2m-stats-device-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h(" << ueH2hNodes.GetN()
+			<< ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR(" << ueM2mRegularNodes.GetN() << ")-"
+			<< currentExecution << ".csv";
 	std::ofstream statsUeFile(ossUe.str().c_str(), std::ios::out);
 	statsUeFile << "RNTI;QCI index;TB bytes;Tx Packets;Tx bytes\n";
 

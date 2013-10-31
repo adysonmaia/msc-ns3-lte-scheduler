@@ -1,131 +1,33 @@
 #!/bin/bash
 
 path=`pwd`
-simulator="$path/waf --run='m2m-lte"
+simulator="time $path/waf --run='m2m-lte"
 
-simTime=2
+simTime=3
 intTrigger=0.05
 minCqi=0
-maxCqi=11
+maxCqi=5
+nH2H=20
+nRbM2M=3
+nRbH2H=3
+minPerRbM2M=0.36
 
-for index in {0..5}
+for index in {0..9}
 do
-    # Scheduler: 0 - H2H: 20 - M2M T: 0  - M2M R: 0
-    echo -e "Scheduler: 0 - H2H: 20 - M2M T: 0  - M2M R: 0 - index: $index"
-    params="--scheduler=0 --simTime=$simTime --nH2H=20 --nM2MTrigger=0 --nM2MRegular=0 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    # Scheduler: 1 - H2H: 20 - M2M T: 0  - M2M R: 0
-    echo -e "Scheduler: 1 - H2H: 20 - M2M T: 0  - M2M R: 0 - index: $index"
-    params="--scheduler=1 --simTime=$simTime --nH2H=20 --nM2MTrigger=0 --nM2MRegular=0 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    # Scheduler: 2 - H2H: 20 - M2M T: 0  - M2M R: 0
-    echo -e "Scheduler: 2 - H2H: 20 - M2M T: 0  - M2M R: 0 - index: $index"
-    params="--scheduler=2 --simTime=$simTime --nH2H=20 --nM2MTrigger=0 --nM2MRegular=0 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    ###############################
-
-    # Scheduler: 0 - H2H: 20 - M2M T: 5  - M2M R: 15
-    echo -e "Scheduler: 0 - H2H: 20 - M2M T: 5  - M2M R: 15 - index: $index"
-    params="--scheduler=0 --simTime=$simTime --nH2H=20 --nM2MTrigger=5 --nM2MRegular=15 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    # Scheduler: 1 - H2H: 20 - M2M T: 5  - M2M R: 15
-    echo -e "Scheduler: 1 - H2H: 20 - M2M T: 5  - M2M R: 15 - index: $index"
-    params="--scheduler=1 --simTime=$simTime --nH2H=20 --nM2MTrigger=5 --nM2MRegular=15 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    # Scheduler: 2 - H2H: 20 - M2M T: 5  - M2M R: 15
-    echo -e "Scheduler: 2 - H2H: 20 - M2M T: 5  - M2M R: 15 - index: $index"
-    params="--scheduler=2 --simTime=$simTime --nH2H=20 --nM2MTrigger=5 --nM2MRegular=15 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    ###############################
-
-    # Scheduler: 0 - H2H: 20 - M2M T: 13  - M2M R: 37
-    echo -e "Scheduler: 0 - H2H: 20 - M2M T: 13  - M2M R: 37 - index: $index"
-    params="--scheduler=0 --simTime=$simTime --nH2H=20 --nM2MTrigger=13 --nM2MRegular=37 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    # Scheduler: 1 - H2H: 20 - M2M T: 13  - M2M R: 37
-    echo -e "Scheduler: 1 - H2H: 20 - M2M T: 13  - M2M R: 37 - index: $index"
-    params="--scheduler=1 --simTime=$simTime --nH2H=20 --nM2MTrigger=13 --nM2MRegular=37 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    # Scheduler: 2 - H2H: 20 - M2M T: 13  - M2M R: 37
-    echo -e "Scheduler: 2 - H2H: 20 - M2M T: 13  - M2M R: 37 - index: $index"
-    params="--scheduler=2 --simTime=$simTime --nH2H=20 --nM2MTrigger=13 --nM2MRegular=37 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    ###############################
-
-    # Scheduler: 0 - H2H: 20 - M2M T: 33  - M2M R: 67
-    echo -e "Scheduler: 0 - H2H: 20 - M2M T: 33  - M2M R: 67 - index: $index"
-    params="--scheduler=0 --simTime=$simTime --nH2H=20 --nM2MTrigger=33 --nM2MRegular=67 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    # Scheduler: 1 - H2H: 20 - M2M T: 33  - M2M R: 67
-    echo -e "Scheduler: 1 - H2H: 20 - M2M T: 33  - M2M R: 67 - index: $index"
-    params="--scheduler=1 --simTime=$simTime --nH2H=20 --nM2MTrigger=33 --nM2MRegular=67 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    # Scheduler: 2 - H2H: 20 - M2M T: 33  - M2M R: 67
-    echo -e "Scheduler: 2 - H2H: 20 - M2M T: 33  - M2M R: 67 - index: $index"
-    params="--scheduler=2 --simTime=$simTime --nH2H=20 --nM2MTrigger=33 --nM2MRegular=67 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    ###############################
-
-    # Scheduler: 0 - H2H: 20 - M2M T: 50  - M2M R: 100
-    echo -e "Scheduler: 0 - H2H: 20 - M2M T: 50  - M2M R: 100 - index: $index"
-    params="--scheduler=0 --simTime=$simTime --nH2H=20 --nM2MTrigger=50 --nM2MRegular=100 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    # Scheduler: 1 - H2H: 20 - M2M T: 50  - M2M R: 100
-    echo -e "Scheduler: 1 - H2H: 20 - M2M T: 50  - M2M R: 100 - index: $index"
-    params="--scheduler=1 --simTime=$simTime --nH2H=20 --nM2MTrigger=50 --nM2MRegular=100 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    # Scheduler: 2 - H2H: 20 - M2M T: 50  - M2M R: 100
-    echo -e "Scheduler: 2 - H2H: 20 - M2M T: 50  - M2M R: 100 - index: $index"
-    params="--scheduler=2 --simTime=$simTime --nH2H=20 --nM2MTrigger=50 --nM2MRegular=100 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    ###############################
-
-    # Scheduler: 0 - H2H: 20 - M2M T: 66  - M2M R: 134
-    echo -e "Scheduler: 0 - H2H: 20 - M2M T: 66  - M2M R: 134 - index: $index"
-    params="--scheduler=0 --simTime=$simTime --nH2H=20 --nM2MTrigger=66 --nM2MRegular=134 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    # Scheduler: 1 - H2H: 20 - M2M T: 66  - M2M R: 134
-    echo -e "Scheduler: 1 - H2H: 20 - M2M T: 66  - M2M R: 134 - index: $index"
-    params="--scheduler=1 --simTime=$simTime --nH2H=20 --nM2MTrigger=66 --nM2MRegular=134 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
-    # Scheduler: 2 - H2H: 20 - M2M T: 66  - M2M R: 134
-    echo -e "Scheduler: 2 - H2H: 20 - M2M T: 66  - M2M R: 134 - index: $index"
-    params="--scheduler=2 --simTime=$simTime --nH2H=20 --nM2MTrigger=66 --nM2MRegular=134 --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nExec=$index"
-    command="$simulator $params'"
-    eval $command
-
+    paramsGeneral="--simTime=$simTime --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --minRBPerH2H=$nRbH2H --minRBPerM2M=$nRbM2M --minPercentRBForM2M=$minPerRbM2M --nExec=$index"
+    for nM2M in 0 20 50 100 150 200 230
+    do
+        nM2MT=$(($nM2M / 3))
+        nM2MR=$(($nM2M - $nM2MT))
+        for scheduler in {0..3}
+        do
+            for useClass in 1 0
+            do
+                echo -e "Scheduler: $scheduler - H2H: $nH2H - M2M T: $nM2MT - M2M R: $nM2MR - useM2MQoSClass: $useClass - index: $index"
+                params="--scheduler=$scheduler --nH2H=$nH2H --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --useM2MQoSClass=$useClass $paramsGeneral"
+                command="$simulator $params'"
+                eval $command
+            done
+        done
+    done
 done
