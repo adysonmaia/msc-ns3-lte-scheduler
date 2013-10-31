@@ -17,6 +17,7 @@
 #include <ns3/eps-bearer.h>
 #include <ns3/fdbet-ff-mac-scheduler.h>
 #include <ns3/random-variable-stream.h>
+#include <ns3/m2m-scheduler-param.h>
 #include <vector>
 #include <map>
 
@@ -66,7 +67,7 @@ public:
 	friend class M2mSchedulerMemberCschedSapProvider;
 	friend class M2mSchedulerMemberSchedSapProvider;
 
-private:
+protected:
 	//
 	// Implementation of the CSCHED API primitives
 	// (See 4.1 for description of the primitives)
@@ -95,7 +96,7 @@ private:
 	void DoSchedUlMacCtrlInfoReq(const struct FfMacSchedSapProvider::SchedUlMacCtrlInfoReqParameters& params);
 	void DoSchedUlCqiInfoReq(const struct FfMacSchedSapProvider::SchedUlCqiInfoReqParameters& params);
 
-private:
+protected:
 	void RefreshDlCqiMaps(void);
 	void RefreshUlCqiMaps(void);
 
@@ -112,12 +113,16 @@ private:
 
 	void SchedUlHarq(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap,
 			struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
+	void SchedUlM2m(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize,
+			struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
 	void SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize,
 			struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
 	void RefreshM2MAccessGrantTimers();
 	void UpdateM2MAccessGrantTimers(const std::vector<uint16_t> &ueList, const M2mRbAllocationMap &rbMap,
-			const std::map<uint16_t, uint16_t> &delayMap);
-private:
+			const std::map<uint16_t, uint32_t> &delayMap);
+	uint32_t GetUeUlMaxPacketDelay(uint16_t rnti);
+
+protected:
 	Ptr<LteAmc> m_amc;
 
 	// MAC SAPs
@@ -213,6 +218,8 @@ private:
 	double m_minPercentM2mRb;
 	double m_m2mTimeWindow;
 	Ptr<UniformRandomVariable> m_uniformRandom;
+	Ptr<M2mSchedulerParam> m_schedulerParam;
+	bool m_useM2mQosClass;
 };
 
 class M2mSchedulerMemberCschedSapProvider: public FfMacCschedSapProvider {
@@ -271,6 +278,6 @@ private:
 	std::vector<struct m2mRbMapValue_t> m_map;
 };
 
-#endif /* M2M_MAC_SCHEDULER_H_ */
-
 }
+
+#endif /* M2M_MAC_SCHEDULER_H_ */

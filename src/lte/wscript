@@ -99,6 +99,7 @@ def build(bld):
         'model/lte-asn1-header.cc',
         'model/lte-rrc-header.cc',
         'model/m2m-mac-scheduler.cc',
+        'model/m2m-lioumpas-mac-scheduler.cc',
         'helper/m2m-scheduler-param.cc',
         ]
 
@@ -245,6 +246,7 @@ def build(bld):
         'model/lte-asn1-header.h',
         'model/lte-rrc-header.h',
         'model/m2m-mac-scheduler.h',
+        'model/m2m-lioumpas-mac-scheduler.h',
         'helper/m2m-scheduler-param.h',
         ]
 
