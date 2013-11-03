@@ -1331,8 +1331,7 @@ void M2mMacScheduler::DoSchedUlCqiInfoReq(
 
 void M2mMacScheduler::DoSchedUlTriggerReq(
 		const struct FfMacSchedSapProvider::SchedUlTriggerReqParameters& params) {
-//	NS_LOG_FUNCTION(
-//			this << " Ul Frame no. " << (params.m_sfnSf >> 4) << " subframe no. "
+//	NS_LOG_INFO(" Ul Frame no. " << (params.m_sfnSf >> 4) << " subframe no. "
 //			<< (0xF & params.m_sfnSf));
 
 	RefreshUlCqiMaps();
@@ -1383,20 +1382,20 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 		} else {
 			h2hList.push_back(rnti);
 			std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(rnti);
-			if (itStats != m_flowStatsUl.end() && (*itStats).second.lastAveragedBsrReceived > 0) {
-				double demand = ((*itBsr).second * (*itStats).second.lastAverageResourcesAllocated)
-						/ (*itStats).second.lastAveragedBsrReceived;
-				h2hRbDemand += std::max(m_minH2hRb, static_cast<uint16_t>(ceil(demand)));
-			} else {
-				h2hRbDemand += m_minH2hRb;
-			}
-
-//			if (itStats != m_flowStatsUl.end() && (*itStats).second.lastAverageResourcesAllocated > 0) {
-//				double demand = (*itStats).second.lastAverageResourcesAllocated;
+//			if (itStats != m_flowStatsUl.end() && (*itStats).second.lastAveragedBsrReceived > 0) {
+//				double demand = ((*itBsr).second * (*itStats).second.lastAverageResourcesAllocated)
+//						/ static_cast<double>((*itStats).second.lastAveragedBsrReceived);
 //				h2hRbDemand += std::max(m_minH2hRb, static_cast<uint16_t>(ceil(demand)));
 //			} else {
 //				h2hRbDemand += m_minH2hRb;
 //			}
+
+			if (itStats != m_flowStatsUl.end() && (*itStats).second.lastAverageResourcesAllocated > 0) {
+				double demand = (*itStats).second.lastAverageResourcesAllocated;
+				h2hRbDemand += std::max(m_minH2hRb, static_cast<uint16_t>(ceil(demand)));
+			} else {
+				h2hRbDemand += m_minH2hRb;
+			}
 		}
 	}
 
@@ -1423,20 +1422,27 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 			floor((nRbAvailable - h2hRbDemand) / m_minM2mRb)));
 	m2mMinRbDemand = m_minM2mRb * std::min(m2mMinRbDemand, static_cast<uint16_t>(m2mList.size()));
 	uint16_t nH2hRb = nRbAvailable - m2mMinRbDemand;
+
+	NS_LOG_INFO("\nUl Frame no. " << (params.m_sfnSf >> 4) << " subframe no. " << (0xF & params.m_sfnSf));NS_LOG_INFO("H2H size: " << h2hList.size() << " M2M size " << m2mList.size() << " RB Available: " << nRbAvailable << ", H2H RB Demand: " << h2hRbDemand << ", H2H RB: " << nH2hRb << ", M2M RB Demand: " << m2mMinRbDemand);
+
 	if (h2hList.size() > 0 && nH2hRb > 0) {
 		SchedUlH2h(h2hList, rbMap, nH2hRb, response);
+	} else {
+		nH2hRb = 0;
 	}
 
 	uint16_t nM2mRb = rbMap.GetAvailableRbSize();
 	if (m2mList.size() > 0 && nM2mRb > 0) {
 		SchedUlM2m(m2mList, rbMap, nM2mRb, response);
+	} else {
+		nH2hRb = 0;
 	}
 
-	if (rbMap.GetSize() != rbMap.GetAvailableRbSize()) {
-		NS_LOG_FUNCTION(
-				this << " Ul Frame no. " << (params.m_sfnSf >> 4) << " subframe no. " << (0xF & params.m_sfnSf));
-//		NS_LOG_INFO(this << "RB Available: " << nRbAvailable << ", H2H RB Demand: " << h2hRbDemand << ", H2H RB: " << nH2hRb << ", M2M RB Demand: " << m2mMinRbDemand);
-	}
+//	if (rbMap.GetSize() != rbMap.GetAvailableRbSize()) {
+//		NS_LOG_FUNCTION(
+//				this << " Ul Frame no. " << (params.m_sfnSf >> 4) << " subframe no. " << (0xF & params.m_sfnSf));
+//		NS_LOG_INFO("H2H size: " << h2hList.size() << " M2M size " << m2mList.size() << " RB Available: " << nRbAvailable << ", H2H RB Demand: " << h2hRbDemand << ", H2H RB: " << nH2hRb << ", M2M RB Demand: " << m2mMinRbDemand);
+//	}
 
 	// Update global UE stats
 	// update UEs stats
@@ -1453,12 +1459,12 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 		(*itStats).second.lastAveragedBsrReceived = (1.0 / timeWindow) * (*itStats).second.lastTtiBsrReceived
 				+ (1.0 - (1.0 / timeWindow)) * (*itStats).second.lastAveragedBsrReceived;
 
-		if ((*itStats).second.lastTtiResourcesAllocated > 0) {
-			NS_LOG_INFO(
-					this << " UL UE" << ((*itStats).second.isM2m ? " M2M " : " H2H ") << (*itStats).first << " Last bytes "
-					<< (*itStats).second.lastTtiBytesTrasmitted << " Average throughput " << (*itStats).second.lastAveragedThroughput
-					<< " RB " << (*itStats).second.lastTtiResourcesAllocated);
-		}
+//		if ((*itStats).second.lastTtiResourcesAllocated > 0) {
+//			NS_LOG_INFO(
+//					this << " UL UE" << ((*itStats).second.isM2m ? " M2M " : " H2H ") << (*itStats).first << " Last bytes "
+//					<< (*itStats).second.lastTtiBytesTrasmitted << " Average throughput " << (*itStats).second.lastAveragedThroughput
+//					<< " RB " << (*itStats).second.lastTtiResourcesAllocated);
+//		}
 
 		(*itStats).second.lastTtiBytesTrasmitted = 0;
 		(*itStats).second.lastTtiResourcesAllocated = 0;
@@ -1783,9 +1789,9 @@ void M2mMacScheduler::SchedUlM2m(const std::vector<uint16_t> &m2mList, M2mRbAllo
 
 	uint16_t rbStart = rbMap.GetFirstAvailableRb();
 	uint16_t rbEnd = rbStart + rbSize;
-	double m2mMaxLastAveragedThroughput = 0;
-	uint32_t m2mMaxDelay = 0;
-	std::map<uint16_t, uint32_t> m2mCurrentDelay;
+	double maxLastAvgThroughput = 0.0;
+	double maxDelay = 0.0;
+	std::map<uint16_t, uint32_t> currentDelay;
 	Time now = Simulator::Now();
 	std::vector<uint16_t>::const_iterator itM2m = m2mList.begin();
 
@@ -1794,8 +1800,8 @@ void M2mMacScheduler::SchedUlM2m(const std::vector<uint16_t> &m2mList, M2mRbAllo
 		std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(rnti);
 		std::map<uint16_t, Time>::iterator itBsrTime = m_ceBsrRxedTime.find(rnti);
 		if (itStats != m_flowStatsUl.end()
-				&& (*itStats).second.lastAveragedThroughput > m2mMaxLastAveragedThroughput) {
-			m2mMaxLastAveragedThroughput = (*itStats).second.lastAveragedThroughput;
+				&& (*itStats).second.lastAveragedThroughput > maxLastAvgThroughput) {
+			maxLastAvgThroughput = (*itStats).second.lastAveragedThroughput;
 		}
 		uint32_t delay = GetUeUlMaxPacketDelay(rnti);
 		if (itBsrTime != m_ceBsrRxedTime.end()) {
@@ -1806,11 +1812,11 @@ void M2mMacScheduler::SchedUlM2m(const std::vector<uint16_t> &m2mList, M2mRbAllo
 				delay -= timeDiff;
 			}
 		}
-		m2mCurrentDelay.insert(std::pair<uint16_t, uint32_t>(rnti, delay));
-		if (delay > m2mMaxDelay) {
-			m2mMaxDelay = delay;
+		currentDelay.insert(std::pair<uint16_t, uint32_t>(rnti, delay));
+		if (delay > maxDelay) {
+			maxDelay = delay;
 		}
-	}
+	}NS_LOG_INFO("Max delay : " << maxDelay << " max Throughput " << maxLastAvgThroughput);
 
 	// Time Domain
 	uint16_t nMaxM2m = std::min(static_cast<uint16_t>(m2mList.size()),
@@ -1819,16 +1825,22 @@ void M2mMacScheduler::SchedUlM2m(const std::vector<uint16_t> &m2mList, M2mRbAllo
 	for (itM2m = m2mList.begin(); itM2m != m2mList.end(); itM2m++) {
 		uint16_t rnti = *itM2m;
 		std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(rnti);
-		std::map<uint16_t, uint32_t>::iterator itDelay = m2mCurrentDelay.find(rnti);
-		double tdValue = 0;
-		if (itStats != m_flowStatsUl.end() && m2mMaxLastAveragedThroughput > 0) {
-			tdValue += 1 - (*itStats).second.lastAveragedThroughput / m2mMaxLastAveragedThroughput;
+		std::map<uint16_t, uint32_t>::iterator itDelay = currentDelay.find(rnti);
+		std::map<uint16_t, EpsBearer::Qci>::iterator itQci = m_ueUlQci.find(rnti);
+		double tdValue = 0.0;
+		double tdDelayValue = 1.0;
+		double tdThroughputValue = 1.0;
+		double delayWeight = 1.0;
+		if (itStats != m_flowStatsUl.end() && maxLastAvgThroughput > 0.0) {
+			tdThroughputValue = 1.0 - (*itStats).second.lastAveragedThroughput / maxLastAvgThroughput;
 		}
-		if (itDelay != m2mCurrentDelay.end() && m2mMaxDelay > 0) {
-			tdValue += 1 - (*itDelay).second / m2mMaxDelay;
+		if (maxDelay > 0.0) {
+			tdDelayValue = 1.0 - (*itDelay).second / maxDelay;
 		}
+		tdValue = (1.0 - delayWeight) * tdThroughputValue + delayWeight * tdDelayValue;
 		tdValue = std::max(tdValue, 0.0);
 		m2mTDValues.insert(std::pair<uint16_t, double>(rnti, tdValue));
+		NS_LOG_INFO("rnti " << rnti << " td value " << tdValue << " delay " << (*itDelay).second);
 	}
 	std::vector<uint16_t> m2mChosen;
 	while (m2mChosen.size() < nMaxM2m) {
@@ -1899,6 +1911,7 @@ void M2mMacScheduler::SchedUlM2m(const std::vector<uint16_t> &m2mList, M2mRbAllo
 			uldci.m_dai = 1; // TDD parameter
 			uldci.m_freqHopping = 0;
 			uldci.m_pdcchPowerOffset = 0; // not used
+			NS_LOG_INFO("allocated rnti " << uldci.m_rnti << " mcs " << (int)uldci.m_mcs << " tb " << uldci.m_tbSize << " delay " << currentDelay.at(uldci.m_rnti));
 
 			response.m_dciList.push_back(uldci);
 			m2mFDValues.erase(uldci.m_rnti);
@@ -1927,7 +1940,7 @@ void M2mMacScheduler::SchedUlM2m(const std::vector<uint16_t> &m2mList, M2mRbAllo
 		}
 	}
 
-	UpdateM2MAccessGrantTimers(m2mList, rbMap, m2mCurrentDelay);
+	UpdateM2MAccessGrantTimers(m2mList, rbMap, currentDelay);
 }
 
 void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap,
@@ -2126,12 +2139,21 @@ void M2mMacScheduler::UpdateM2MAccessGrantTimers(const std::vector<uint16_t> &ue
 			std::map<uint16_t, uint32_t>::const_iterator itDelay = delayMap.find(*itM2m);
 			std::map<uint16_t, uint32_t>::iterator itGrant = m_m2mGrantTimers.find(*itM2m);
 			uint32_t waitTime = 0;
+			uint32_t delay = 0;
 
 			if (itDelay != delayMap.end()) {
-				waitTime = m_uniformRandom->GetInteger(0, (*itDelay).second / 2);
+				delay = (*itDelay).second;
 			} else {
-				uint32_t delay = GetUeUlMaxPacketDelay(*itM2m);
-				waitTime = m_uniformRandom->GetInteger(0, delay / 2);
+				delay = GetUeUlMaxPacketDelay(*itM2m);
+			}
+			if (delay > 0) {
+				uint32_t maxDelayTime = static_cast<uint32_t>(floor(std::max(2.0, delay * 0.1)));
+				waitTime = m_uniformRandom->GetInteger(1, maxDelayTime);
+			}
+
+			std::map<uint16_t, EpsBearer::Qci>::iterator itQci = m_ueUlQci.find(*itM2m);
+			if (itQci != m_ueUlQci.end() /*&& (*itQci).second == EpsBearer::NGBR_M2M_TRIGGER_REPORT*/) {
+				NS_LOG_INFO("rnti " << *itM2m << " qci " << (*itQci).second << " waitTime " << waitTime << " delay " << delay);
 			}
 
 			if (itGrant != m_m2mGrantTimers.end()) {

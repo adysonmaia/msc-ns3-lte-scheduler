@@ -45,8 +45,10 @@ void M2mLioumpasMacScheduler::SchedUlM2m(const std::vector<uint16_t> &ueList, M2
 	uint16_t rbStart = rbMap.GetFirstAvailableRb();
 	uint16_t rbEnd = rbStart + rbSize;
 	uint16_t rbPerUe = rbSize / ueList.size();
-	if (rbPerUe < m_minM2mRb)
-		rbPerUe = m_minM2mRb;
+	if (rbPerUe < 1)
+		rbPerUe = 1;
+//	if (rbPerUe < m_minM2mRb)
+//		rbPerUe = m_minM2mRb;
 	std::vector<std::pair<uint16_t, uint32_t> > delayValues;
 	std::map<uint16_t, uint16_t> rbDemandUe;
 	std::map<uint16_t, std::pair<uint16_t, uint16_t> > rbRangeUe;

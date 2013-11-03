@@ -202,16 +202,15 @@ int main(int argc, char *argv[]) {
 		break;
 	}
 //	lteHelper->SetSchedulerAttribute("UlGrantMcs", UintegerValue(7));
-	lteHelper->SetSchedulerAttribute("UlGrantMcs", UintegerValue(0));
+	lteHelper->SetSchedulerAttribute("UlGrantMcs", UintegerValue(12));
+//	lteHelper->SetSchedulerAttribute("UlGrantMcs", UintegerValue(0));
 	lteHelper->SetSchedulerAttribute("HarqEnabled", BooleanValue(harqEnabled));
 
 	// Uncomment to enable logging
 //	lteHelper->EnableLogComponents();
-//	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
+	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
 //	LogComponentEnable("M2mUdpServer", LOG_LEVEL_INFO);
 //	LogComponentEnable("M2mUdpClientApplication", LOG_LEVEL_INFO);
-//	LogComponentEnable("EpcEnbApplication", LOG_LEVEL_ALL);
-//	LogComponentEnable("M2mTag", LOG_LEVEL_ALL);
 
 	RngSeedManager::SetRun(currentExecution + 1);
 
@@ -415,11 +414,11 @@ int main(int argc, char *argv[]) {
 		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
 		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeM2m));
 		appHelper.SetAttribute("CoefficientOfRandomInterval", DoubleValue(0.0));
+		appHelper.SetAttribute("MaxPacketDelay", UintegerValue(interval.GetMilliSeconds()));
 		if (useM2mQosClass) {
-			appHelper.SetAttribute("MaxPacketDelay", UintegerValue(bearerDefault.GetPacketDelayBudgetMs()));
+//			appHelper.SetAttribute("MaxPacketDelay", UintegerValue(bearerDefault.GetPacketDelayBudgetMs()));
 			schedulerParam->SetMaxPacketDelay(ueDevice, bearerDefault.GetPacketDelayBudgetMs());
 		} else {
-			appHelper.SetAttribute("MaxPacketDelay", UintegerValue(interval.GetMilliSeconds()));
 			schedulerParam->SetMaxPacketDelay(ueDevice, interval.GetMilliSeconds());
 		}
 

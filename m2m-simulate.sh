@@ -8,9 +8,9 @@ intTrigger=0.05
 minCqi=0
 maxCqi=5
 nH2H=20
-nRbM2M=3
+nRbM2M=5
 nRbH2H=3
-minPerRbM2M=0.36
+minPerRbM2M=0.4
 
 for index in {0..9}
 do
@@ -19,15 +19,21 @@ do
     do
         nM2MT=$(($nM2M / 3))
         nM2MR=$(($nM2M - $nM2MT))
-        for scheduler in {0..3}
+        scheduler=0
+        for useClass in 1 0
         do
-            for useClass in 1 0
-            do
-                echo -e "Scheduler: $scheduler - H2H: $nH2H - M2M T: $nM2MT - M2M R: $nM2MR - useM2MQoSClass: $useClass - index: $index"
-                params="--scheduler=$scheduler --nH2H=$nH2H --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --useM2MQoSClass=$useClass $paramsGeneral"
-                command="$simulator $params'"
-                eval $command
-            done
+            echo -e "Scheduler: $scheduler - H2H: $nH2H - M2M T: $nM2MT - M2M R: $nM2MR - useM2MQoSClass: $useClass - index: $index"
+            params="--scheduler=$scheduler --nH2H=$nH2H --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --useM2MQoSClass=$useClass $paramsGeneral"
+            command="$simulator $params'"
+            eval $command
+        done
+        useClass=0
+        for scheduler in {1..3}
+        do
+            echo -e "Scheduler: $scheduler - H2H: $nH2H - M2M T: $nM2MT - M2M R: $nM2MR - useM2MQoSClass: $useClass - index: $index"
+            params="--scheduler=$scheduler --nH2H=$nH2H --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --useM2MQoSClass=$useClass $paramsGeneral"
+            command="$simulator $params'"
+            eval $command
         done
     done
 done
