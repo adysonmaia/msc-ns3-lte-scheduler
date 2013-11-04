@@ -1830,7 +1830,7 @@ void M2mMacScheduler::SchedUlM2m(const std::vector<uint16_t> &m2mList, M2mRbAllo
 		double tdValue = 0.0;
 		double tdDelayValue = 1.0;
 		double tdThroughputValue = 1.0;
-		double delayWeight = 1.0;
+		double delayWeight = 0.8;
 		if (itStats != m_flowStatsUl.end() && maxLastAvgThroughput > 0.0) {
 			tdThroughputValue = 1.0 - (*itStats).second.lastAveragedThroughput / maxLastAvgThroughput;
 		}
@@ -1840,7 +1840,7 @@ void M2mMacScheduler::SchedUlM2m(const std::vector<uint16_t> &m2mList, M2mRbAllo
 		tdValue = (1.0 - delayWeight) * tdThroughputValue + delayWeight * tdDelayValue;
 		tdValue = std::max(tdValue, 0.0);
 		m2mTDValues.insert(std::pair<uint16_t, double>(rnti, tdValue));
-		NS_LOG_INFO("rnti " << rnti << " td value " << tdValue << " delay " << (*itDelay).second);
+//		NS_LOG_INFO("rnti " << rnti << " td value " << tdValue << " delay " << (*itDelay).second);
 	}
 	std::vector<uint16_t> m2mChosen;
 	while (m2mChosen.size() < nMaxM2m) {

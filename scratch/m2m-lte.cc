@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
 	uint16_t nM2mRegular = 50;
 	uint16_t nH2h = 20;
 	double simTime = 1.0;
-	double minRadius = 375;
+	double minRadius = 90;
 	double maxRadius = 1000;
 	unsigned int bandwidth = 25; // n RB
 	Time statsStartTime = Seconds(0.300);
@@ -590,25 +590,25 @@ int main(int argc, char *argv[]) {
 				devTxBytes = itClientTx->second.second;
 			}
 
-			tbBytes += devTbBytes / 1024; // bytes => kbytes
-			txBytes += devTxBytes / 1024;
-			fairnessTb += (devTbBytes / 1024) * (devTbBytes / 1024); // bytes => kbytes
+			tbBytes +=  devTbBytes / 1024.0; // bytes => kbytes
+			txBytes +=  devTxBytes / 1024.0;
+			fairnessTb += (devTbBytes / 1024.0) * (devTbBytes / 1024.0); // bytes => kbytes
 			txPackets += devTxPackets;
-			fairnessTx += (devTxBytes / 1024) * (devTxBytes / 1024);
+			fairnessTx += (devTxBytes / 1024.0) * (devTxBytes / 1024.0);
 
 			M2mEpcStats_s ueStats = enbApp->GetM2mEpcStats(rnti);
 //			std::cout << "rnti " << rnti  << " tx packets  " << devTxPackets <<  " rx packets "  << ueStats.rx_packets <<  " lost " << ueStats.lost_packets << std::endl;
 
 			rxPackets += ueStats.rx_packets + ueStats.lost_packets;
-			rxBytes += (ueStats.rx_size + ueStats.lost_size) / 1024;
+			rxBytes += (ueStats.rx_size + ueStats.lost_size) / 1024.0;
 			rxPktExceedDelay += ueStats.lost_packets;
-			rxBytesExceedDelay += ueStats.lost_size / 1024;
+			rxBytesExceedDelay += ueStats.lost_size / 1024.0;
 			if (ueStats.rx_packets > 0) {
-				avgDelay += ueStats.rx_delay.GetMilliSeconds() / ueStats.rx_packets;
+				avgDelay += ueStats.rx_delay.GetMilliSeconds() / (double) ueStats.rx_packets;
 				delayCount++;
 			}
 			if (ueStats.lost_packets > 0) {
-				avgExceedDelay += ueStats.lost_delay.GetMilliSeconds() / ueStats.lost_packets;
+				avgExceedDelay += ueStats.lost_delay.GetMilliSeconds() / (double) ueStats.lost_packets;
 				delayExceedCount++;
 			}
 		}
