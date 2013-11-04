@@ -1826,7 +1826,6 @@ void M2mMacScheduler::SchedUlM2m(const std::vector<uint16_t> &m2mList, M2mRbAllo
 		uint16_t rnti = *itM2m;
 		std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(rnti);
 		std::map<uint16_t, uint32_t>::iterator itDelay = currentDelay.find(rnti);
-		std::map<uint16_t, EpsBearer::Qci>::iterator itQci = m_ueUlQci.find(rnti);
 		double tdValue = 0.0;
 		double tdDelayValue = 1.0;
 		double tdThroughputValue = 1.0;

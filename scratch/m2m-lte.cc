@@ -117,17 +117,21 @@ int main(int argc, char *argv[]) {
 	bool enableM2m = true;
 	uint16_t nM2mTrigger = 150;
 	uint16_t nM2mRegular = 50;
-	uint16_t nH2h = 20;
+	uint16_t nH2h = 30;
+	uint16_t nH2hVideo, nH2hVoip, nH2hFtp;
 	double simTime = 1.0;
 	double minRadius = 90;
 	double maxRadius = 1000;
 	unsigned int bandwidth = 25; // n RB
 	Time statsStartTime = Seconds(0.300);
 	unsigned int packetSizeM2m = 125; // bytes
-	unsigned int packetSizeH2h = 1200; // bytes
-//	double interPacketM2mTrigger = 30; // s
+	unsigned int packetSizeH2hVideo = 1200; // bytes
+	unsigned int packetSizeH2hVoip = 40; // bytes
+	unsigned int packetSizeH2hFtp = 256; // bytes
 	double interPacketM2mTrigger = 0.05; // s
-	double interPacketH2h = 75; // ms
+	double interPacketH2hVideo = 75; // ms
+	double interPacketH2hVoip = 20; // ms
+	double interPacketH2hFtp = 15.625; // ms
 	unsigned int minRBPerM2m = 3;
 	unsigned int minRBPerH2h = 3;
 	double minPercentRBForM2m = (double) minRBPerM2m / bandwidth;
@@ -201,7 +205,6 @@ int main(int argc, char *argv[]) {
 		enableM2m = true;
 		break;
 	}
-//	lteHelper->SetSchedulerAttribute("UlGrantMcs", UintegerValue(7));
 	lteHelper->SetSchedulerAttribute("UlGrantMcs", UintegerValue(12));
 //	lteHelper->SetSchedulerAttribute("UlGrantMcs", UintegerValue(0));
 	lteHelper->SetSchedulerAttribute("HarqEnabled", BooleanValue(harqEnabled));
@@ -214,14 +217,22 @@ int main(int argc, char *argv[]) {
 
 	RngSeedManager::SetRun(currentExecution + 1);
 
+	nH2hVoip = nH2h / 3;
+	nH2hFtp = nH2hVoip;
+	nH2hVideo = nH2h - nH2hVoip - nH2hFtp;
+
 	// Create Nodes: eNodeB and UE
 	NodeContainer enbNodes;
-	NodeContainer ueH2hNodes;
-	NodeContainer ueM2mTriggerNodes;
-	NodeContainer ueM2mRegularNodes;
-	NodeContainer ueM2MNodes, ueAllNodes;
+	NodeContainer ueH2hVideoNodes, ueH2hVoipNodes, ueH2hFtpNodes;
+	NodeContainer ueM2mTriggerNodes, ueM2mRegularNodes;
+	NodeContainer ueH2hNodes, ueM2MNodes, ueAllNodes;
 	enbNodes.Create(1);
-	ueH2hNodes.Create(nH2h);
+	ueH2hVideoNodes.Create(nH2hVideo);
+	ueH2hVoipNodes.Create(nH2hVoip);
+	ueH2hFtpNodes.Create(nH2hFtp);
+	ueH2hNodes.Add(ueH2hVideoNodes);
+	ueH2hNodes.Add(ueH2hVoipNodes);
+	ueH2hNodes.Add(ueH2hFtpNodes);
 	ueM2mTriggerNodes.Create(nM2mTrigger);
 	ueM2mRegularNodes.Create(nM2mRegular);
 	ueM2MNodes.Add(ueM2mTriggerNodes);
@@ -251,11 +262,16 @@ int main(int argc, char *argv[]) {
 
 	// Install LTE Devices to the nodes
 	NetDeviceContainer enbDevs = lteHelper->InstallEnbDevice(enbNodes);
-	NetDeviceContainer ueH2hDevs = lteHelper->InstallUeDevice(ueH2hNodes);
+	NetDeviceContainer ueH2hVideoDevs = lteHelper->InstallUeDevice(ueH2hVideoNodes);
+	NetDeviceContainer ueH2hVoipDevs = lteHelper->InstallUeDevice(ueH2hVoipNodes);
+	NetDeviceContainer ueH2hFtpDevs = lteHelper->InstallUeDevice(ueH2hFtpNodes);
 	NetDeviceContainer ueM2mTriggerDevs = lteHelper->InstallUeDevice(ueM2mTriggerNodes);
 	NetDeviceContainer ueM2mRegularDevs = lteHelper->InstallUeDevice(ueM2mRegularNodes);
-	NetDeviceContainer ueM2mDevs, ueAllDevs;
+	NetDeviceContainer ueH2hDevs, ueM2mDevs, ueAllDevs;
 	std::vector<NetDeviceContainer> ueM2mRegularQciDevs;
+	ueH2hDevs.Add(ueH2hVideoDevs);
+	ueH2hDevs.Add(ueH2hVoipDevs);
+	ueH2hDevs.Add(ueH2hFtpDevs);
 	ueM2mDevs.Add(ueM2mTriggerDevs);
 	ueM2mDevs.Add(ueM2mRegularDevs);
 	ueAllDevs.Add(ueH2hDevs);
@@ -305,46 +321,102 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Install and start applications on UEs and remote host
-	uint16_t remoteH2hPort = 2000;
-	uint16_t remoteM2mTriggerPort = 2001;
-	uint16_t remoteM2mRegularPort = 2002;
+	uint16_t remoteH2hVideoPort = 2000;
+	uint16_t remoteH2hVoipPort = 2001;
+	uint16_t remoteH2hFtpPort = 2002;
+	uint16_t remoteM2mTriggerPort = 2003;
+	uint16_t remoteM2mRegularPort = 2004;
 	ApplicationContainer allClientApps;
 	ApplicationContainer allServerApps;
 	ApplicationContainer h2hServerApps;
 	ApplicationContainer m2mServerApps;
-	ApplicationContainer m2mTriggerServerApps;
-	ApplicationContainer m2mRegularServerApps;
+	ApplicationContainer h2hVideoServerApps, h2hVoipServerApps, h2hFtpServerApps;
+	ApplicationContainer m2mTriggerServerApps, m2mRegularServerApps;
 	std::vector<ApplicationContainer> m2mRegularQciServerApps;
 	std::map<Ptr<Node>, EpsBearer> ueBearerMap;
 	Ptr<EpcEnbApplication> enbApp = enbNodes.Get(0)->GetApplication(0)->GetObject<EpcEnbApplication>();
 	Ptr<M2mSchedulerParam> schedulerParam = SimulationSingleton<M2mSchedulerParam>::Get();
 
-	// H2H
-	EpsBearer bearerH2h = EpsBearer(EpsBearer::GBR_CONV_VIDEO);
-	Ptr<EpcTft> tftH2h = Create<EpcTft>();
-	EpcTft::PacketFilter pfH2h;
-	pfH2h.remoteAddress = remoteHostAddr;
-	pfH2h.remotePortStart = remoteH2hPort;
-	pfH2h.remotePortEnd = remoteH2hPort;
-	tftH2h->Add(pfH2h);
-	lteHelper->ActivateDedicatedEpsBearer(ueH2hDevs, bearerH2h, tftH2h);
-	for (uint32_t u = 0; u < ueH2hNodes.GetN(); ++u) {
-		M2mUdpClientHelper appHelper(remoteHostAddr, remoteM2mTriggerPort);
-		appHelper.SetAttribute("Interval", TimeValue(MilliSeconds((int) interPacketH2h)));
+	// H2H Video
+	EpsBearer bearerH2hVideo = EpsBearer(EpsBearer::GBR_CONV_VIDEO);
+	Ptr<EpcTft> tftH2hVideo = Create<EpcTft>();
+	EpcTft::PacketFilter pfH2hVideo;
+	pfH2hVideo.remoteAddress = remoteHostAddr;
+	pfH2hVideo.remotePortStart = remoteH2hVideoPort;
+	pfH2hVideo.remotePortEnd = remoteH2hVideoPort;
+	tftH2hVideo->Add(pfH2hVideo);
+	lteHelper->ActivateDedicatedEpsBearer(ueH2hVideoDevs, bearerH2hVideo, tftH2hVideo);
+	for (uint32_t u = 0; u < ueH2hVideoNodes.GetN(); ++u) {
+		M2mUdpClientHelper appHelper(remoteHostAddr, remoteH2hVideoPort);
+		appHelper.SetAttribute("Interval", TimeValue(MilliSeconds((int) interPacketH2hVideo)));
 		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
-		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeH2h));
+		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeH2hVideo));
 		appHelper.SetAttribute("CoefficientOfRandomInterval", DoubleValue(0.0));
-		appHelper.SetAttribute("MaxPacketDelay", UintegerValue(bearerH2h.GetPacketDelayBudgetMs()));
+		appHelper.SetAttribute("MaxPacketDelay", UintegerValue(bearerH2hVideo.GetPacketDelayBudgetMs()));
 
-		Ptr<Node> node = ueH2hNodes.Get(u);
+		Ptr<Node> node = ueH2hVideoNodes.Get(u);
 		allClientApps.Add(appHelper.Install(node));
-		ueBearerMap.insert(std::pair<Ptr<Node>, EpsBearer>(node, bearerH2h));
+		ueBearerMap.insert(std::pair<Ptr<Node>, EpsBearer>(node, bearerH2hVideo));
 	}
-	M2mUdpServerHelper h2hServerHelper(remoteH2hPort);
-	h2hServerApps.Add(h2hServerHelper.Install(remoteHost));
-	h2hServerHelper.GetServer()->SetAttribute("MaxPacketDelay",
-			TimeValue(MilliSeconds(bearerH2h.GetPacketDelayBudgetMs())));
-//	h2hServerHelper.GetServer()->SetAttribute("StatsStartTime", TimeValue(statsStartTime));
+	M2mUdpServerHelper h2hVideoServerHelper(remoteH2hVideoPort);
+	h2hVideoServerApps.Add(h2hVideoServerHelper.Install(remoteHost));
+	h2hVideoServerHelper.GetServer()->SetAttribute("MaxPacketDelay",
+			TimeValue(MilliSeconds(bearerH2hVideo.GetPacketDelayBudgetMs())));
+	h2hServerApps.Add(h2hVideoServerApps);
+
+	// H2H VoIP
+	EpsBearer bearerH2hVoip = EpsBearer(EpsBearer::GBR_CONV_VOICE);
+	Ptr<EpcTft> tftH2hVoip = Create<EpcTft>();
+	EpcTft::PacketFilter pfH2hVoip;
+	pfH2hVoip.remoteAddress = remoteHostAddr;
+	pfH2hVoip.remotePortStart = remoteH2hVoipPort;
+	pfH2hVoip.remotePortEnd = remoteH2hVoipPort;
+	tftH2hVoip->Add(pfH2hVoip);
+	lteHelper->ActivateDedicatedEpsBearer(ueH2hVoipDevs, bearerH2hVoip, tftH2hVoip);
+	for (uint32_t u = 0; u < ueH2hVoipNodes.GetN(); ++u) {
+		M2mUdpClientHelper appHelper(remoteHostAddr, remoteH2hVoipPort);
+		appHelper.SetAttribute("Interval", TimeValue(MilliSeconds((int) interPacketH2hVoip)));
+		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
+		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeH2hVoip));
+		appHelper.SetAttribute("CoefficientOfRandomInterval", DoubleValue(0.0));
+		appHelper.SetAttribute("MaxPacketDelay", UintegerValue(bearerH2hVoip.GetPacketDelayBudgetMs()));
+
+		Ptr<Node> node = ueH2hVoipNodes.Get(u);
+		allClientApps.Add(appHelper.Install(node));
+		ueBearerMap.insert(std::pair<Ptr<Node>, EpsBearer>(node, bearerH2hVoip));
+	}
+	M2mUdpServerHelper h2hVoipServerHelper(remoteH2hVoipPort);
+	h2hVoipServerApps.Add(h2hVoipServerHelper.Install(remoteHost));
+	h2hVoipServerHelper.GetServer()->SetAttribute("MaxPacketDelay",
+			TimeValue(MilliSeconds(bearerH2hVoip.GetPacketDelayBudgetMs())));
+	h2hServerApps.Add(h2hVoipServerApps);
+
+	// H2H FTP
+	EpsBearer bearerH2hFtp = EpsBearer(EpsBearer::NGBR_VIDEO_TCP_DEFAULT);
+	Ptr<EpcTft> tftH2hFtp = Create<EpcTft>();
+	EpcTft::PacketFilter pfH2hFtp;
+	pfH2hFtp.remoteAddress = remoteHostAddr;
+	pfH2hFtp.remotePortStart = remoteH2hFtpPort;
+	pfH2hFtp.remotePortEnd = remoteH2hFtpPort;
+	tftH2hFtp->Add(pfH2hFtp);
+	lteHelper->ActivateDedicatedEpsBearer(ueH2hFtpDevs, bearerH2hFtp, tftH2hFtp);
+	for (uint32_t u = 0; u < ueH2hFtpNodes.GetN(); ++u) {
+		M2mUdpClientHelper appHelper(remoteHostAddr, remoteH2hFtpPort);
+		appHelper.SetAttribute("Interval", TimeValue(MilliSeconds((int) interPacketH2hFtp)));
+		appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
+		appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeH2hFtp));
+		appHelper.SetAttribute("CoefficientOfRandomInterval", DoubleValue(0.0));
+		appHelper.SetAttribute("MaxPacketDelay", UintegerValue(bearerH2hFtp.GetPacketDelayBudgetMs()));
+
+		Ptr<Node> node = ueH2hFtpNodes.Get(u);
+		allClientApps.Add(appHelper.Install(node));
+		ueBearerMap.insert(std::pair<Ptr<Node>, EpsBearer>(node, bearerH2hFtp));
+	}
+	M2mUdpServerHelper h2hFtpServerHelper(remoteH2hFtpPort);
+	h2hFtpServerApps.Add(h2hFtpServerHelper.Install(remoteHost));
+	h2hFtpServerHelper.GetServer()->SetAttribute("MaxPacketDelay",
+			TimeValue(MilliSeconds(bearerH2hFtp.GetPacketDelayBudgetMs())));
+	h2hServerApps.Add(h2hFtpServerApps);
 
 	// M2M Trigger Report
 	EpsBearer bearerM2mTriggerDefault = EpsBearer(EpsBearer::NGBR_M2M_TRIGGER_REPORT);
@@ -377,7 +449,6 @@ int main(int argc, char *argv[]) {
 	m2mServerApps.Add(m2mTriggerServerApps);
 	m2mTriggerServerHelper.GetServer()->SetAttribute("MaxPacketDelay",
 			TimeValue(MilliSeconds(bearerM2mTriggerDefault.GetPacketDelayBudgetMs())));
-//	m2mTriggerServerHelper.GetServer()->SetAttribute("StatsStartTime", TimeValue(statsStartTime));
 
 	// M2M Regular Report
 	std::vector<EpsBearer> bearerM2mRegularList = GetAvailableM2mRegularEpsBearers(simTime, minM2mRegularCqi,
@@ -426,37 +497,6 @@ int main(int argc, char *argv[]) {
 		allClientApps.Add(appHelper.Install(ueDevice->GetNode()));
 		ueM2mRegularQciDevs.at(bearerIndex).Add(ueDevice);
 	}
-	/*std::vector<EpsBearer> bearerM2mRegularList = GetAvailableM2mRegularEpsBearers(simTime, minM2mRegularCqi,
-	 maxM2mRegularCqi);
-	 ueM2mRegularQciDevs.resize(bearerM2mRegularList.size(), NetDeviceContainer());
-	 for (uint32_t u = 0; u < ueM2mRegularDevs.GetN(); u++) {
-	 Ptr<NetDevice> ueDevice = ueM2mRegularDevs.Get(u);
-	 Ptr<EpcTft> tft = Create<EpcTft>();
-	 EpcTft::PacketFilter pf;
-	 EpsBearer bearer = bearerM2mRegularList.at(u % bearerM2mRegularList.size());
-	 int port = remoteM2mRegularPort + (u % bearerM2mRegularList.size());
-	 Time interval = MilliSeconds(bearer.GetPacketDelayBudgetMs());
-	 ueBearerMap.insert(std::pair<Ptr<Node>, EpsBearer>(ueDevice->GetNode(), bearer));
-	 if (!enableM2m) {
-	 bearer = EpsBearer(EpsBearer::NGBR_VIDEO_TCP_DEFAULT);
-	 }
-	 pf.remoteAddress = remoteHostAddr;
-	 pf.remotePortStart = port;
-	 pf.remotePortEnd = port;
-	 tft->Add(pf);
-	 lteHelper->ActivateDedicatedEpsBearer(ueDevice, bearer, tft);
-
-	 M2mUdpClientHelper appHelper(remoteHostAddr, port);
-	 appHelper.SetAttribute("Interval", TimeValue(interval));
-	 appHelper.SetAttribute("MaxPackets", UintegerValue(1000000));
-	 appHelper.SetAttribute("PacketSize", UintegerValue(packetSizeM2m));
-	 appHelper.SetAttribute("CoefficientOfRandomInterval", DoubleValue(0.0));
-	 appHelper.SetAttribute("MaxPacketDelay", UintegerValue(interval.GetMilliSeconds()));
-
-	 allClientApps.Add(appHelper.Install(ueDevice->GetNode()));
-	 ueM2mRegularQciDevs.at(u % bearerM2mRegularList.size()).Add(ueDevice);
-	 }
-	 */
 	for (unsigned int i = 0; i < bearerM2mRegularList.size(); i++) {
 		int port = remoteM2mRegularPort + i;
 		M2mUdpServerHelper m2mRegularServerHelper(port);
@@ -465,7 +505,6 @@ int main(int argc, char *argv[]) {
 		m2mServerApps.Add(m2mRegularServerApps);
 		m2mRegularServerHelper.GetServer()->SetAttribute("MaxPacketDelay",
 				TimeValue(MilliSeconds(bearerM2mRegularList.at(i).GetPacketDelayBudgetMs())));
-//		m2mRegularServerHelper.GetServer()->SetAttribute("StatsStartTime", TimeValue(statsStartTime));
 	}
 
 	allServerApps.Add(h2hServerApps);
@@ -483,7 +522,6 @@ int main(int argc, char *argv[]) {
 	Config::ConnectWithoutContext("/NodeList/*/$ns3::Ipv4L3Protocol/Tx",
 			MakeBoundCallback(&ClientTxCallback, &clientTxMap, &statsStartTime));
 
-//	Simulator::Stop(Seconds(simTime - 0.0001) + statsStartTime);
 	Simulator::Stop(Seconds(simTime));
 	Simulator::Run();
 
@@ -491,18 +529,37 @@ int main(int argc, char *argv[]) {
 	// config.ConfigureAttributes ();
 
 	std::vector<StatsTools_s> statsToolsList;
-	StatsTools_s toolAll, toolH2h, toolM2m, toolM2mTrigger, toolM2mRegular;
+	StatsTools_s toolAll, toolH2h, toolM2m;
+	StatsTools_s toolH2hVideo, toolH2hVoip, toolH2hFtp, toolM2mTrigger, toolM2mRegular;
 	toolAll.type = "ALL";
 	toolAll.qci = EpsBearer::Qci(0);
 	toolAll.ptr_appContainer = &allServerApps;
 	toolAll.ptr_netDevContainer = &ueAllDevs;
 	statsToolsList.push_back(toolAll);
 
-	toolH2h.type = "H2H";
-	toolH2h.qci = bearerH2h.qci;
+	toolH2h.type = "H2H All";
+	toolH2h.qci = EpsBearer::Qci(0);
 	toolH2h.ptr_appContainer = &h2hServerApps;
 	toolH2h.ptr_netDevContainer = &ueH2hDevs;
 	statsToolsList.push_back(toolH2h);
+
+	toolH2hVideo.type = "H2H Video";
+	toolH2hVideo.qci = bearerH2hVideo.qci;
+	toolH2hVideo.ptr_appContainer = &h2hVideoServerApps;
+	toolH2hVideo.ptr_netDevContainer = &ueH2hVideoDevs;
+	statsToolsList.push_back(toolH2hVideo);
+
+	toolH2hVoip.type = "H2H VoIP";
+	toolH2hVoip.qci = bearerH2hVoip.qci;
+	toolH2hVoip.ptr_appContainer = &h2hVoipServerApps;
+	toolH2hVoip.ptr_netDevContainer = &ueH2hVoipDevs;
+	statsToolsList.push_back(toolH2hVoip);
+
+	toolH2hFtp.type = "H2H FTP";
+	toolH2hFtp.qci = bearerH2hFtp.qci;
+	toolH2hFtp.ptr_appContainer = &h2hFtpServerApps;
+	toolH2hFtp.ptr_netDevContainer = &ueH2hFtpDevs;
+	statsToolsList.push_back(toolH2hFtp);
 
 	toolM2m.type = "M2M";
 	toolM2m.qci = EpsBearer::Qci(0);
@@ -532,9 +589,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	std::ostringstream ossGeral, ossUe;
-	ossGeral << "m2m-stats-geral-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h(" << ueH2hNodes.GetN()
-			<< ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR(" << ueM2mRegularNodes.GetN() << ")-"
-			<< currentExecution << ".csv";
+	ossGeral << "m2m-stats-geral-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h("
+			<< ueH2hVideoNodes.GetN() << ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR("
+			<< ueM2mRegularNodes.GetN() << ")-" << currentExecution << ".csv";
 	std::ofstream statsGeralFile(ossGeral.str().c_str(), std::ios::out);
 	statsGeralFile
 			<< "Type; Size; Sim Time (s); Qci; TB (KiB); Avg TB; Throughput TB (kbps); Fairness TB; Tx Packets; Tx (KiB); "
@@ -542,17 +599,17 @@ int main(int argc, char *argv[]) {
 			<< "Rx Packets; Rx (KiB); Rx Packets > Delay; Rx (KiB) > Max Delay; Packets Lost; "
 			<< " Avg Delay (ms); Avg Delay > Max Delay (ms)\n";
 
-	ossUe << "m2m-stats-device-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h(" << ueH2hNodes.GetN()
-			<< ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR(" << ueM2mRegularNodes.GetN() << ")-"
-			<< currentExecution << ".csv";
+	ossUe << "m2m-stats-device-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h("
+			<< ueH2hVideoNodes.GetN() << ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR("
+			<< ueM2mRegularNodes.GetN() << ")-" << currentExecution << ".csv";
 	std::ofstream statsUeFile(ossUe.str().c_str(), std::ios::out);
 	statsUeFile << "RNTI;QCI index;TB bytes;Tx Packets;Tx bytes\n";
 
 	for (std::vector<StatsTools_s>::iterator it = statsToolsList.begin(); it != statsToolsList.end(); it++) {
 		NetDeviceContainer *ptrNetDevCont = it->ptr_netDevContainer;
 		NetDeviceContainer::Iterator itNetDev;
-		ApplicationContainer *ptrAppCont = it->ptr_appContainer;
-		ApplicationContainer::Iterator itApp;
+//		ApplicationContainer *ptrAppCont = it->ptr_appContainer;
+//		ApplicationContainer::Iterator itApp;
 		int qciIndex = it->qci;
 		unsigned int classSize = 0;
 		long double tbBytes = 0;
@@ -590,8 +647,8 @@ int main(int argc, char *argv[]) {
 				devTxBytes = itClientTx->second.second;
 			}
 
-			tbBytes +=  devTbBytes / 1024.0; // bytes => kbytes
-			txBytes +=  devTxBytes / 1024.0;
+			tbBytes += devTbBytes / 1024.0; // bytes => kbytes
+			txBytes += devTxBytes / 1024.0;
 			fairnessTb += (devTbBytes / 1024.0) * (devTbBytes / 1024.0); // bytes => kbytes
 			txPackets += devTxPackets;
 			fairnessTx += (devTxBytes / 1024.0) * (devTxBytes / 1024.0);
@@ -612,21 +669,6 @@ int main(int argc, char *argv[]) {
 				delayExceedCount++;
 			}
 		}
-//		for (itApp = ptrAppCont->Begin(); itApp != ptrAppCont->End(); itApp++) {
-//			Ptr<M2mUdpServer> server = DynamicCast<M2mUdpServer>(*itApp);
-//			rxPackets += server->GetReceivedPackets() + server->GetLostPackets();
-//			rxBytes += (server->GetReceivedBytes() + server->GetLostBytes()) / 1024;
-//			rxPktExceedDelay += server->GetLostPackets();
-//			rxBytesExceedDelay += server->GetLostBytes() / 1024;
-//			if (server->GetReceivedPackets() > 0) {
-//				avgDelay += server->GetReceivedSumDelay().GetMilliSeconds() / server->GetReceivedPackets();
-//				delayCount++;
-//			}
-//			if (server->GetLostPackets() > 0) {
-//				avgExceedDelay += server->GetLostSumDelay().GetMilliSeconds() / server->GetLostPackets();
-//				delayExceedCount++;
-//			}
-//		}
 		classSize = ptrNetDevCont->GetN();
 		if (classSize > 0) {
 			avgTb = tbBytes / classSize;
