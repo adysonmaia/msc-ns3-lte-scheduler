@@ -1829,7 +1829,7 @@ void M2mMacScheduler::SchedUlM2m(const std::vector<uint16_t> &m2mList, M2mRbAllo
 		double tdValue = 0.0;
 		double tdDelayValue = 1.0;
 		double tdThroughputValue = 1.0;
-		double delayWeight = 0.9;
+		double delayWeight = 1.0;
 		if (itStats != m_flowStatsUl.end() && maxLastAvgThroughput > 0.0) {
 			tdThroughputValue = 1.0 - (*itStats).second.lastAveragedThroughput / maxLastAvgThroughput;
 		}

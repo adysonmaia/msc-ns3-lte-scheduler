@@ -590,7 +590,7 @@ int main(int argc, char *argv[]) {
 
 	std::ostringstream ossGeral, ossUe;
 	ossGeral << "m2m-stats-geral-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h("
-			<< ueH2hVideoNodes.GetN() << ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR("
+			<< ueH2hNodes.GetN() << ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR("
 			<< ueM2mRegularNodes.GetN() << ")-" << currentExecution << ".csv";
 	std::ofstream statsGeralFile(ossGeral.str().c_str(), std::ios::out);
 	statsGeralFile
@@ -600,7 +600,7 @@ int main(int argc, char *argv[]) {
 			<< " Avg Delay (ms); Avg Delay > Max Delay (ms)\n";
 
 	ossUe << "m2m-stats-device-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h("
-			<< ueH2hVideoNodes.GetN() << ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR("
+			<< ueH2hNodes.GetN() << ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR("
 			<< ueM2mRegularNodes.GetN() << ")-" << currentExecution << ".csv";
 	std::ofstream statsUeFile(ossUe.str().c_str(), std::ios::out);
 	statsUeFile << "RNTI;QCI index;TB bytes;Tx Packets;Tx bytes\n";
