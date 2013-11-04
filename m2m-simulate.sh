@@ -8,9 +8,9 @@ intTrigger=0.05
 minCqi=0
 maxCqi=5
 nH2H=30
-nRbM2M=5
+nRbM2M=3
 nRbH2H=3
-minPerRbM2M=0.4
+minPerRbM2M=0.48
 
 for index in {0..9}
 do
