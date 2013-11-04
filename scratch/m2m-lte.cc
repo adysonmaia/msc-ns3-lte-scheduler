@@ -624,7 +624,7 @@ int main(int argc, char *argv[]) {
 		unsigned int rxPackets = 0;
 		long double rxBytes = 0;
 		unsigned int rxPktExceedDelay = 0;
-		unsigned long rxBytesExceedDelay = 0;
+		long double rxBytesExceedDelay = 0;
 		unsigned int packetLost = 0;
 		double avgDelay = 0.0;
 		double avgExceedDelay = 0.0;
