@@ -238,11 +238,11 @@ M2mMacScheduler::M2mMacScheduler() :
 }
 
 M2mMacScheduler::~M2mMacScheduler() {
-	NS_LOG_FUNCTION(this);
+//	NS_LOG_FUNCTION(this);
 }
 
 void M2mMacScheduler::DoDispose() {
-	NS_LOG_FUNCTION (this);
+//	NS_LOG_FUNCTION (this);
 	m_dlHarqProcessesDciBuffer.clear();
 	m_dlHarqProcessesTimer.clear();
 	m_dlHarqProcessesRlcPduListBuffer.clear();
@@ -275,7 +275,9 @@ TypeId M2mMacScheduler::GetTypeId(void) {
 					"MinPercentRBForM2M", "(default 0.1)", DoubleValue(0.1),
 					MakeDoubleAccessor(&M2mMacScheduler::m_minPercentM2mRb), MakeDoubleChecker<double>()).AddAttribute(
 					"UseM2MQoSClass", "(default true)", BooleanValue(true),
-					MakeBooleanAccessor(&M2mMacScheduler::m_useM2mQosClass), MakeBooleanChecker());
+					MakeBooleanAccessor(&M2mMacScheduler::m_useM2mQosClass), MakeBooleanChecker()).AddAttribute(
+					"M2MDelayWeight", "delay weight in time domain function", DoubleValue(0.7),
+					MakeDoubleAccessor(&M2mMacScheduler::m_m2mDelayWeight), MakeDoubleChecker<double>());
 	return tid;
 }
 
@@ -1155,13 +1157,13 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 
 void M2mMacScheduler::DoSchedUlNoiseInterferenceReq(
 		const struct FfMacSchedSapProvider::SchedUlNoiseInterferenceReqParameters& params) {
-	NS_LOG_FUNCTION(this);
+//	NS_LOG_FUNCTION(this);
 	return;
 }
 
 void M2mMacScheduler::DoSchedUlSrInfoReq(
 		const struct FfMacSchedSapProvider::SchedUlSrInfoReqParameters& params) {
-	NS_LOG_FUNCTION(this);
+//	NS_LOG_FUNCTION(this);
 	return;
 }
 
@@ -1829,14 +1831,13 @@ void M2mMacScheduler::SchedUlM2m(const std::vector<uint16_t> &m2mList, M2mRbAllo
 		double tdValue = 0.0;
 		double tdDelayValue = 1.0;
 		double tdThroughputValue = 1.0;
-		double delayWeight = 0.7;
 		if (itStats != m_flowStatsUl.end() && maxLastAvgThroughput > 0.0) {
 			tdThroughputValue = 1.0 - (*itStats).second.lastAveragedThroughput / maxLastAvgThroughput;
 		}
 		if (maxDelay > 0.0) {
 			tdDelayValue = 1.0 - (*itDelay).second / maxDelay;
 		}
-		tdValue = (1.0 - delayWeight) * tdThroughputValue + delayWeight * tdDelayValue;
+		tdValue = (1.0 - m_m2mDelayWeight) * tdThroughputValue + m_m2mDelayWeight * tdDelayValue;
 		tdValue = std::max(tdValue, 0.0);
 		m2mTDValues.insert(std::pair<uint16_t, double>(rnti, tdValue));
 //		NS_LOG_INFO("rnti " << rnti << " td value " << tdValue << " delay " << (*itDelay).second);
@@ -2067,6 +2068,8 @@ void M2mMacScheduler::SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAlloc
 			rbMap.Allocate(uldci.m_rnti, uldci.m_rbStart, uldci.m_rbLen);
 			response.m_dciList.push_back(uldci);
 			ueAvailable.erase(itUeChosen);
+
+//			NS_LOG_INFO("H2H allocated rnti " << uldci.m_rnti << " mcs " << (int)uldci.m_mcs << " tb " << uldci.m_tbSize);
 
 			for (uint32_t c = 0; c < nRbGroup; c++) {
 				bool intercepts = false;

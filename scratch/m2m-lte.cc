@@ -120,8 +120,8 @@ int main(int argc, char *argv[]) {
 	uint16_t nH2h = 30;
 	uint16_t nH2hVideo, nH2hVoip, nH2hFtp;
 	double simTime = 1.0;
-	double minRadius = 90;
-	double maxRadius = 1000;
+	double minRadius = 100;
+	double maxRadius = 1400;
 	unsigned int bandwidth = 25; // n RB
 	Time statsStartTime = Seconds(0.300);
 	unsigned int packetSizeM2m = 125; // bytes
@@ -139,10 +139,13 @@ int main(int argc, char *argv[]) {
 	int currentExecution = 0;
 	int minM2mRegularCqi = 0, maxM2mRegularCqi = 11;
 	bool useM2mQosClass = true;
+	std::string suffixStatsFile = "";
 
 	Config::SetDefault("ns3::LteEnbRrc::SrsPeriodicity", UintegerValue(320));
 	Config::SetDefault("ns3::LteEnbNetDevice::UlBandwidth", UintegerValue(bandwidth));
 	Config::SetDefault("ns3::LteEnbNetDevice::DlBandwidth", UintegerValue(bandwidth));
+	Config::SetDefault("ns3::LteEnbMac::NumberOfRaPreambles", UintegerValue(64));
+	Config::SetDefault("ns3::LteEnbMac::PreambleTransMax", UintegerValue(200));
 
 	CommandLine cmd;
 	cmd.AddValue("scheduler", "Scheduler Type [0=M2M, 1=PF, 2=RR, 3=Lioumpas]", scheduler);
@@ -153,7 +156,7 @@ int main(int argc, char *argv[]) {
 	cmd.AddValue("minPercentRBForM2M", "min percentage of resource blocks available for M2M UE",
 			minPercentRBForM2m);
 	cmd.AddValue("minRBPerH2H", "min resource block demand per H2H UE", minRBPerH2h);
-	cmd.AddValue("cellRadius", "Radius [m] of cell", maxRadius);
+	cmd.AddValue("cellRadius", "Radius of cell", maxRadius);
 	cmd.AddValue("simTime", "Total duration of the simulation [s])", simTime);
 	cmd.AddValue("nExec", "number of current execution", currentExecution);
 	cmd.AddValue("intervalM2MTrigger",
@@ -161,6 +164,7 @@ int main(int argc, char *argv[]) {
 	cmd.AddValue("minM2MRegularCqi", "min cqi index for m2m regular [0, 11]", minM2mRegularCqi);
 	cmd.AddValue("maxM2MRegularCqi", "max cqi index for m2m regular [0, 11]", maxM2mRegularCqi);
 	cmd.AddValue("useM2MQoSClass", "use qos params from m2m class", useM2mQosClass);
+	cmd.AddValue("suffixStatsFile", "", suffixStatsFile);
 
 	cmd.Parse(argc, argv);
 
@@ -208,12 +212,14 @@ int main(int argc, char *argv[]) {
 	lteHelper->SetSchedulerAttribute("UlGrantMcs", UintegerValue(12));
 //	lteHelper->SetSchedulerAttribute("UlGrantMcs", UintegerValue(0));
 	lteHelper->SetSchedulerAttribute("HarqEnabled", BooleanValue(harqEnabled));
+	lteHelper->SetSchedulerAttribute("UlCqiFilter", EnumValue(FfMacScheduler::PUSCH_UL_CQI));
 
 	// Uncomment to enable logging
 //	lteHelper->EnableLogComponents();
-	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
+//	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
 //	LogComponentEnable("M2mUdpServer", LOG_LEVEL_INFO);
 //	LogComponentEnable("M2mUdpClientApplication", LOG_LEVEL_INFO);
+//	LogComponentEnable("LteRlcAm", LOG_LEVEL_INFO);
 
 	RngSeedManager::SetRun(currentExecution + 1);
 
@@ -259,6 +265,13 @@ int main(int argc, char *argv[]) {
 	enbMobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
 	enbMobility.SetPositionAllocator(positionAlloc);
 	enbMobility.Install(enbNodes);
+
+	//TODO teste
+//	Ptr<MobilityModel> mobility = ueH2hNodes.Get(0)->GetObject<MobilityModel> ();
+//	Vector position = mobility->GetPosition();
+//	position.x = maxRadius;
+//	position.y = 0.0;
+//	mobility->SetPosition(position);
 
 	// Install LTE Devices to the nodes
 	NetDeviceContainer enbDevs = lteHelper->InstallEnbDevice(enbNodes);
@@ -589,9 +602,13 @@ int main(int argc, char *argv[]) {
 	}
 
 	std::ostringstream ossGeral, ossUe;
-	ossGeral << "m2m-stats-geral-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h("
-			<< ueH2hNodes.GetN() << ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR("
-			<< ueM2mRegularNodes.GetN() << ")-" << currentExecution << ".csv";
+	ossGeral << "m2m-stats-geral-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h(" << ueH2hNodes.GetN()
+			<< ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR(" << ueM2mRegularNodes.GetN() << ")-"
+			<< currentExecution;
+	if (suffixStatsFile.length() > 0) {
+		ossGeral << "-" << suffixStatsFile;
+	}
+	ossGeral << ".csv";
 	std::ofstream statsGeralFile(ossGeral.str().c_str(), std::ios::out);
 	statsGeralFile
 			<< "Type; Size; Sim Time (s); Qci; TB (KiB); Avg TB; Throughput TB (kbps); Fairness TB; Tx Packets; Tx (KiB); "
@@ -599,9 +616,13 @@ int main(int argc, char *argv[]) {
 			<< "Rx Packets; Rx (KiB); Rx Packets > Delay; Rx (KiB) > Max Delay; Packets Lost; "
 			<< " Avg Delay (ms); Avg Delay > Max Delay (ms)\n";
 
-	ossUe << "m2m-stats-device-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h("
-			<< ueH2hNodes.GetN() << ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR("
-			<< ueM2mRegularNodes.GetN() << ")-" << currentExecution << ".csv";
+	ossUe << "m2m-stats-device-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h(" << ueH2hNodes.GetN()
+			<< ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR(" << ueM2mRegularNodes.GetN() << ")-"
+			<< currentExecution;
+	if (suffixStatsFile.length() > 0) {
+		ossUe << "-" << suffixStatsFile;
+	}
+	ossUe << ".csv";
 	std::ofstream statsUeFile(ossUe.str().c_str(), std::ios::out);
 	statsUeFile << "RNTI;QCI index;TB bytes;Tx Packets;Tx bytes\n";
 

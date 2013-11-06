@@ -220,6 +220,7 @@ protected:
 	Ptr<UniformRandomVariable> m_uniformRandom;
 	Ptr<M2mSchedulerParam> m_schedulerParam;
 	bool m_useM2mQosClass;
+	double m_m2mDelayWeight;
 };
 
 class M2mSchedulerMemberCschedSapProvider: public FfMacCschedSapProvider {
