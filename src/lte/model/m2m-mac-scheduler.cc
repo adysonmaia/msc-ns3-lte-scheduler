@@ -1384,20 +1384,20 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 		} else {
 			h2hList.push_back(rnti);
 			std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(rnti);
-//			if (itStats != m_flowStatsUl.end() && (*itStats).second.lastAveragedBsrReceived > 0) {
-//				double demand = ((*itBsr).second * (*itStats).second.lastAverageResourcesAllocated)
-//						/ static_cast<double>((*itStats).second.lastAveragedBsrReceived);
-//				h2hRbDemand += std::max(m_minH2hRb, static_cast<uint16_t>(ceil(demand)));
-//			} else {
-//				h2hRbDemand += m_minH2hRb;
-//			}
-
-			if (itStats != m_flowStatsUl.end() && (*itStats).second.lastAverageResourcesAllocated > 0) {
-				double demand = (*itStats).second.lastAverageResourcesAllocated;
+			if (itStats != m_flowStatsUl.end() && (*itStats).second.lastAveragedBsrReceived > 0) {
+				double demand = ((*itBsr).second * (*itStats).second.lastAverageResourcesAllocated)
+						/ static_cast<double>((*itStats).second.lastAveragedBsrReceived);
 				h2hRbDemand += std::max(m_minH2hRb, static_cast<uint16_t>(ceil(demand)));
 			} else {
 				h2hRbDemand += m_minH2hRb;
 			}
+
+//			if (itStats != m_flowStatsUl.end() && (*itStats).second.lastAverageResourcesAllocated > 0) {
+//				double demand = (*itStats).second.lastAverageResourcesAllocated;
+//				h2hRbDemand += std::max(m_minH2hRb, static_cast<uint16_t>(ceil(demand)));
+//			} else {
+//				h2hRbDemand += m_minH2hRb;
+//			}
 		}
 	}
 

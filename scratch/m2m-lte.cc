@@ -122,7 +122,8 @@ int main(int argc, char *argv[]) {
 	double simTime = 1.0;
 	double minRadius = 100;
 	double maxRadius = 1400;
-	unsigned int bandwidth = 50; // n RB
+//	unsigned int bandwidth = 50; // n RB
+	unsigned int bandwidth = 25; // n RB
 	Time statsStartTime = Seconds(0.300);
 	unsigned int packetSizeM2m = 125; // bytes
 	unsigned int packetSizeH2hVideo = 1200; // bytes

@@ -15,7 +15,7 @@ minPerRbM2M=0.48
 for index in {0..9}
 do
     paramsGeneral="--simTime=$simTime --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --minRBPerH2H=$nRbH2H --minRBPerM2M=$nRbM2M --minPercentRBForM2M=$minPerRbM2M --nExec=$index"
-    for nM2M in 0 20 50 100 150 200 230
+    for nM2M in 0 50 100 150 200 250
     do
         nM2MT=$(($nM2M / 3))
         nM2MR=$(($nM2M - $nM2MT))
