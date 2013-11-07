@@ -10,11 +10,11 @@ $schedulerNameIndex = array(
 		0=>array(0=>"M2M without Class", 1=>"M2M with Class"),
 		1=>array(0=>"PF", 1=>"PF"),
 		2=>array(0=>"RR", 1=>"RR"),
-		3=>array(0=>"Lioumpas", 1=>"Lioumpas"),
+		3=>array(0=>"Lioumpas Alg. 2", 1=>"Lioumpas Alg. 2"),
 );
 $typeRespList=array("H2H All", "M2M Trigger", "M2M Regular All");
 $schedulerRespList=array($schedulerNameIndex[0][0], $schedulerNameIndex[0][1], $schedulerNameIndex[1][0], $schedulerNameIndex[2][0], $schedulerNameIndex[3][0]);
-$fieldRespList=array("throughput", "delayPercent");
+$fieldRespList=array("throughput", "delayPercent", "fairness");
 
 $result=array();
 foreach ($nM2mList as $nM2m) {
