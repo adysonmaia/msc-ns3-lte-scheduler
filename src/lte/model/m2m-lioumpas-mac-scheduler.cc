@@ -46,10 +46,10 @@ void M2mLioumpasMacScheduler::SchedUlM2m(const std::vector<uint16_t> &ueList, M2
 	uint16_t rbStart = rbMap.GetFirstAvailableRb();
 	uint16_t rbEnd = rbStart + rbSize;
 	uint16_t rbPerUe = rbSize / ueList.size();
-	if (rbPerUe < 1)
-		rbPerUe = 1;
-//	if (rbPerUe < m_minM2mRb)
-//		rbPerUe = m_minM2mRb;
+//	if (rbPerUe < 1)
+//		rbPerUe = 1;
+	if (rbPerUe < m_minM2mRb)
+		rbPerUe = m_minM2mRb;
 	std::vector<std::pair<uint16_t, uint32_t> > delayValues;
 	std::map<uint16_t, uint16_t> rbDemandUe;
 	std::map<uint16_t, std::pair<uint16_t, uint16_t> > rbRangeUe;
@@ -69,13 +69,16 @@ void M2mLioumpasMacScheduler::SchedUlM2m(const std::vector<uint16_t> &ueList, M2
 		uint16_t rnti = (*itDelay).first;
 		if (rbDemandUe[rnti] > 0) {
 			uint16_t rbChosen = rbEnd;
-			double maxSinr = DBL_MIN;
+			double maxSinr = -DBL_MAX;
 			std::map<uint16_t, std::vector<double> >::iterator itCqi = m_ueCqi.find(rnti);
 			for (uint16_t rbI = rbStart; rbI < rbEnd; rbI++) {
-				if (!rbMap.IsFree(rbI))
+				if (!rbMap.IsFree(rbI)) {
+//					NS_LOG_INFO("rnti " << rnti <<  " not free rbI " << rbI);
 					continue;
+				}
 				if ((rbRangeUe[rnti].first != rbEnd && rbRangeUe[rnti].second != rbEnd)
 						&& (rbI + 1 < rbRangeUe[rnti].first || rbI - 1 > rbRangeUe[rnti].second)) {
+//					NS_LOG_INFO("rnti " << rnti <<  " rbI " << rbI << " first " << rbRangeUe[rnti].first << " last " << rbRangeUe[rnti].second);
 					continue;
 				}
 				if (itCqi != m_ueCqi.end()) {
@@ -87,7 +90,9 @@ void M2mLioumpasMacScheduler::SchedUlM2m(const std::vector<uint16_t> &ueList, M2
 						maxSinr = sinr;
 						rbChosen = rbI;
 					}
+//					NS_LOG_INFO("rnti " << rnti << " rbI "  << rbI <<  " sinr " << sinr << " max sinr " << maxSinr << " NO SINR " << NO_SINR);
 				} else {
+//					NS_LOG_INFO("rnti " << rnti <<  " cqi not found rbI " << rbI);
 					rbChosen = rbI;
 					break;
 				}
@@ -101,9 +106,11 @@ void M2mLioumpasMacScheduler::SchedUlM2m(const std::vector<uint16_t> &ueList, M2
 				}
 				rbMap.Allocate(rnti, rbChosen);
 				rbDemandUe[rnti]--;
+//				NS_LOG_INFO("rnti " << rnti <<  " allocated rb " << rbChosen);
 			} else {
-				// there are no more rb available
-				break;
+				// there are no more rb available for the device
+//				NS_LOG_INFO("rnti " << rnti << " no more rb " << rbMap.GetAvailableRbSize());
+				itDelay = delayValues.erase(itDelay);
 			}
 		} else {
 			itDelay = delayValues.erase(itDelay);
@@ -151,6 +158,8 @@ void M2mLioumpasMacScheduler::SchedUlM2m(const std::vector<uint16_t> &ueList, M2
 
 		response.m_dciList.push_back(uldci);
 		UpdateUlRlcBufferInfo(uldci.m_rnti, uldci.m_tbSize);
+
+		NS_LOG_INFO("allocated rnti " << uldci.m_rnti << " mcs " << (int)uldci.m_mcs << " tb " << uldci.m_tbSize << " rbg " << rbg.size());
 
 		std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(uldci.m_rnti);
 		if (itStats != m_flowStatsUl.end()) {

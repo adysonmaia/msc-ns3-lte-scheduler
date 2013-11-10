@@ -21,9 +21,9 @@ public:
 	virtual void DoDispose(void);
 	static TypeId GetTypeId(void);
 protected:
-	void SchedUlM2m(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize,
+	virtual void SchedUlM2m(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize,
 			struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
-	void UpdateM2MAccessGrantTimers(const std::vector<uint16_t> &ueList, const M2mRbAllocationMap &rbMap,
+	virtual void UpdateM2MAccessGrantTimers(const std::vector<uint16_t> &ueList, const M2mRbAllocationMap &rbMap,
 			const std::map<uint16_t, uint32_t> &delayMap);
 };
 

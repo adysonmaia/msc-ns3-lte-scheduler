@@ -122,7 +122,6 @@ int main(int argc, char *argv[]) {
 	double simTime = 1.0;
 	double minRadius = 100;
 	double maxRadius = 1400;
-//	unsigned int bandwidth = 50; // n RB
 	unsigned int bandwidth = 25; // n RB
 	Time statsStartTime = Seconds(0.300);
 	unsigned int packetSizeM2m = 125; // bytes
@@ -141,10 +140,9 @@ int main(int argc, char *argv[]) {
 	int minM2mRegularCqi = 0, maxM2mRegularCqi = 11;
 	bool useM2mQosClass = true;
 	std::string suffixStatsFile = "";
+	std::string statsDir = "";
 
 	Config::SetDefault("ns3::LteEnbRrc::SrsPeriodicity", UintegerValue(320));
-	Config::SetDefault("ns3::LteEnbNetDevice::UlBandwidth", UintegerValue(bandwidth));
-	Config::SetDefault("ns3::LteEnbNetDevice::DlBandwidth", UintegerValue(bandwidth));
 	Config::SetDefault("ns3::LteEnbMac::NumberOfRaPreambles", UintegerValue(64));
 	Config::SetDefault("ns3::LteEnbMac::PreambleTransMax", UintegerValue(200));
 
@@ -166,11 +164,16 @@ int main(int argc, char *argv[]) {
 	cmd.AddValue("maxM2MRegularCqi", "max cqi index for m2m regular [0, 11]", maxM2mRegularCqi);
 	cmd.AddValue("useM2MQoSClass", "use qos params from m2m class", useM2mQosClass);
 	cmd.AddValue("suffixStatsFile", "", suffixStatsFile);
+	cmd.AddValue("statsDir", "", statsDir);
+	cmd.AddValue("bandwidth", "", bandwidth);
 
 	cmd.Parse(argc, argv);
 
 	ConfigStore inputConfig;
 	inputConfig.ConfigureDefaults();
+
+	Config::SetDefault("ns3::LteEnbNetDevice::UlBandwidth", UintegerValue(bandwidth));
+	Config::SetDefault("ns3::LteEnbNetDevice::DlBandwidth", UintegerValue(bandwidth));
 
 	// Parse again so you can override default values from the command line
 	cmd.Parse(argc, argv);
@@ -217,7 +220,8 @@ int main(int argc, char *argv[]) {
 
 	// Uncomment to enable logging
 //	lteHelper->EnableLogComponents();
-//	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
+	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
+	LogComponentEnable("M2mLioumpasMacScheduler", LOG_LEVEL_ALL);
 //	LogComponentEnable("M2mUdpServer", LOG_LEVEL_INFO);
 //	LogComponentEnable("M2mUdpClientApplication", LOG_LEVEL_INFO);
 //	LogComponentEnable("LteRlcAm", LOG_LEVEL_INFO);
@@ -266,13 +270,6 @@ int main(int argc, char *argv[]) {
 	enbMobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
 	enbMobility.SetPositionAllocator(positionAlloc);
 	enbMobility.Install(enbNodes);
-
-	//TODO teste
-//	Ptr<MobilityModel> mobility = ueH2hNodes.Get(0)->GetObject<MobilityModel> ();
-//	Vector position = mobility->GetPosition();
-//	position.x = maxRadius;
-//	position.y = 0.0;
-//	mobility->SetPosition(position);
 
 	// Install LTE Devices to the nodes
 	NetDeviceContainer enbDevs = lteHelper->InstallEnbDevice(enbNodes);
@@ -603,6 +600,14 @@ int main(int argc, char *argv[]) {
 	}
 
 	std::ostringstream ossGeral, ossUe;
+	if (statsDir.length() > 0) {
+		ossGeral << statsDir;
+		ossUe << statsDir;
+		if (statsDir[statsDir.length() - 1] != '/') {
+			ossGeral << "/";
+			ossUe << "/";
+		}
+	}
 	ossGeral << "m2m-stats-geral-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h(" << ueH2hNodes.GetN()
 			<< ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR(" << ueM2mRegularNodes.GetN() << ")-"
 			<< currentExecution;

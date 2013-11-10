@@ -111,14 +111,14 @@ protected:
 	int LcActivePerFlow(uint16_t rnti);
 	double EstimateUlSinr(uint16_t rnti, uint16_t rb);
 
-	void SchedUlHarq(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap,
+	virtual void SchedUlHarq(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap,
 			struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
-	void SchedUlM2m(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize,
+	virtual void SchedUlM2m(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize,
 			struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
-	void SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize,
+	virtual void SchedUlH2h(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize,
 			struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
-	void RefreshM2MAccessGrantTimers();
-	void UpdateM2MAccessGrantTimers(const std::vector<uint16_t> &ueList, const M2mRbAllocationMap &rbMap,
+	virtual void RefreshM2MAccessGrantTimers();
+	virtual void UpdateM2MAccessGrantTimers(const std::vector<uint16_t> &ueList, const M2mRbAllocationMap &rbMap,
 			const std::map<uint16_t, uint32_t> &delayMap);
 	uint32_t GetUeUlMaxPacketDelay(uint16_t rnti);
 

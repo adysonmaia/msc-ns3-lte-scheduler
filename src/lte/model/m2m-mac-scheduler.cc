@@ -1425,7 +1425,8 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 	m2mMinRbDemand = m_minM2mRb * std::min(m2mMinRbDemand, static_cast<uint16_t>(m2mList.size()));
 	uint16_t nH2hRb = nRbAvailable - m2mMinRbDemand;
 
-	NS_LOG_INFO("\nUl Frame no. " << (params.m_sfnSf >> 4) << " subframe no. " << (0xF & params.m_sfnSf));NS_LOG_INFO("H2H size: " << h2hList.size() << " M2M size " << m2mList.size() << " RB Available: " << nRbAvailable << ", H2H RB Demand: " << h2hRbDemand << ", H2H RB: " << nH2hRb << ", M2M RB Demand: " << m2mMinRbDemand);
+	NS_LOG_INFO("\nUl Frame no. " << (params.m_sfnSf >> 4) << " subframe no. " << (0xF & params.m_sfnSf));
+//	NS_LOG_INFO("H2H size: " << h2hList.size() << " M2M size " << m2mList.size() << " RB Available: " << nRbAvailable << ", H2H RB Demand: " << h2hRbDemand << ", H2H RB: " << nH2hRb << ", M2M RB Demand: " << m2mMinRbDemand);
 
 	if (h2hList.size() > 0 && nH2hRb > 0) {
 		SchedUlH2h(h2hList, rbMap, nH2hRb, response);
@@ -1434,6 +1435,7 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 	}
 
 	uint16_t nM2mRb = rbMap.GetAvailableRbSize();
+	NS_LOG_INFO("H2H size: " << h2hList.size() << " M2M size " << m2mList.size() << " RB Available: " << nRbAvailable << ", H2H RB Demand: " << h2hRbDemand << ", H2H RB: " << nH2hRb << ", M2M RB Demand: " << m2mMinRbDemand << ", M2M RB: " << nM2mRb);
 	if (m2mList.size() > 0 && nM2mRb > 0) {
 		SchedUlM2m(m2mList, rbMap, nM2mRb, response);
 	} else {
