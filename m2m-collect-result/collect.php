@@ -5,7 +5,7 @@ $nM2mList=array(0, 50, 100, 150, 200, 250);
 // $nM2mList=array(0, 20, 50, 100, 150, 200, 230);
 $schedulers=array(0, 1, 2, 3);
 $nExec=10;
-$fieldsIndex = array("type"=>0, "throughput"=>6, "fairness"=>7, "rx"=>12, "rxDelay"=>14);
+$fieldsIndex = array("type"=>0, "throughput"=>6, "fairness"=>7, "rx"=>12, "rxDelay"=>14, "tx"=>8, "txLoss"=>16);
 $schedulerNameIndex = array(
 		0=>array(0=>"M2M without Class", 1=>"M2M with Class"),
 		1=>array(0=>"PF", 1=>"PF"),
@@ -14,7 +14,7 @@ $schedulerNameIndex = array(
 );
 $typeRespList=array("H2H All", "M2M Trigger", "M2M Regular All");
 $schedulerRespList=array($schedulerNameIndex[0][0], $schedulerNameIndex[0][1], $schedulerNameIndex[1][0], $schedulerNameIndex[2][0], $schedulerNameIndex[3][0]);
-$fieldRespList=array("throughput", "delayPercent", "fairness");
+$fieldRespList=array("throughput", "delayPercent", "fairness", "lossPercent");
 
 $result=array();
 foreach ($nM2mList as $nM2m) {
@@ -46,17 +46,21 @@ foreach ($nM2mList as $nM2m) {
 					$fairness = (double)$fields[$fieldsIndex['fairness']];
 					$rx = (int)$fields[$fieldsIndex['rx']];
 					$rxDelay = (int)$fields[$fieldsIndex['rxDelay']];
-					$delayPercent = ($rx > 0) ? $rxDelay / $rx : 0.0;
+					$tx = (int)$fields[$fieldsIndex['tx']];
+					$txLoss = (int)$fields[$fieldsIndex['txLoss']];
+					$lossPercent = ($tx > 0) ? $txLoss / $tx : 0.0;
+					$delayPercent = ($tx > 0) ? ($rxDelay + $txLoss) / $tx : 0.0;
 					
 					if (!key_exists($schName, $values))
 						$values[$schName] = array();
 					$schValues=$values[$schName];
 					if (!key_exists($type, $schValues)) {
-						$schValues[$type] = array("throughput"=>0.0, "fairness"=> 0.0, "delayPercent"=>0.0);
+						$schValues[$type] = array("throughput"=>0.0, "fairness"=> 0.0, "delayPercent"=>0.0, "lossPercent"=>0.0);
 					}
 					$schValues[$type]['throughput'] += $throughput;
 					$schValues[$type]['fairness'] += $fairness;
 					$schValues[$type]['delayPercent'] += $delayPercent;
+					$schValues[$type]['lossPercent'] += $lossPercent;
 					$values[$schName] = $schValues;
 				}
 				$valuesCount++;
@@ -72,6 +76,7 @@ foreach ($nM2mList as $nM2m) {
 				$schValues[$type]['throughput'] /= $valuesCount;
 				$schValues[$type]['fairness'] /= $valuesCount;
 				$schValues[$type]['delayPercent'] /= $valuesCount;
+				$schValues[$type]['lossPercent'] /= $valuesCount;
 			}
 			$values[$schName] = $schValues;
 		}
