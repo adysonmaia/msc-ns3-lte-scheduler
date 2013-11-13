@@ -599,13 +599,14 @@ int main(int argc, char *argv[]) {
 		statsToolsList.push_back(tool);
 	}
 
-	std::ostringstream ossGeral, ossUe;
+	std::ostringstream ossGeral;
+//	std::ostringstream ossUe;
 	if (statsDir.length() > 0) {
 		ossGeral << statsDir;
-		ossUe << statsDir;
+//		ossUe << statsDir;
 		if (statsDir[statsDir.length() - 1] != '/') {
 			ossGeral << "/";
-			ossUe << "/";
+//			ossUe << "/";
 		}
 	}
 	ossGeral << "m2m-stats-geral-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h(" << ueH2hNodes.GetN()
@@ -622,15 +623,15 @@ int main(int argc, char *argv[]) {
 			<< "Rx Packets; Rx (KiB); Rx Packets > Delay; Rx (KiB) > Max Delay; Packets Lost; "
 			<< " Avg Delay (ms); Avg Delay > Max Delay (ms)\n";
 
-	ossUe << "m2m-stats-device-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h(" << ueH2hNodes.GetN()
-			<< ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR(" << ueM2mRegularNodes.GetN() << ")-"
-			<< currentExecution;
-	if (suffixStatsFile.length() > 0) {
-		ossUe << "-" << suffixStatsFile;
-	}
-	ossUe << ".csv";
-	std::ofstream statsUeFile(ossUe.str().c_str(), std::ios::out);
-	statsUeFile << "RNTI;QCI index;TB bytes;Tx Packets;Tx bytes\n";
+//	ossUe << "m2m-stats-device-s(" << scheduler << ")-c(" << useM2mQosClass << ")-h2h(" << ueH2hNodes.GetN()
+//			<< ")-m2mT(" << ueM2mTriggerNodes.GetN() << ")-m2mR(" << ueM2mRegularNodes.GetN() << ")-"
+//			<< currentExecution;
+//	if (suffixStatsFile.length() > 0) {
+//		ossUe << "-" << suffixStatsFile;
+//	}
+//	ossUe << ".csv";
+//	std::ofstream statsUeFile(ossUe.str().c_str(), std::ios::out);
+//	statsUeFile << "RNTI;QCI index;TB bytes;Tx Packets;Tx bytes\n";
 
 	for (std::vector<StatsTools_s>::iterator it = statsToolsList.begin(); it != statsToolsList.end(); it++) {
 		NetDeviceContainer *ptrNetDevCont = it->ptr_netDevContainer;
@@ -724,36 +725,36 @@ int main(int argc, char *argv[]) {
 				<< avgDelay << ";" << avgExceedDelay << "\n";
 	}
 
-	for (NetDeviceContainer::Iterator itNetDev = ueAllDevs.Begin(); itNetDev != ueAllDevs.End(); itNetDev++) {
-		uint16_t rnti = (*itNetDev)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti();
-		std::map<uint16_t, unsigned long>::iterator it = ulTbMap.find(rnti);
-
-		unsigned long devTbBytes = 0;
-		int devQciIndex = 0;
-		unsigned int devTxPackets = 0;
-		unsigned long devTxBytes = 0;
-
-		if (it != ulTbMap.end()) {
-			devTbBytes = it->second;
-		}
-		std::map<Ptr<NetDevice>, std::pair<unsigned int, unsigned long> >::iterator itClientTx =
-				clientTxMap.find(*itNetDev);
-		if (itClientTx != clientTxMap.end()) {
-			devTxPackets += itClientTx->second.first;
-			devTxBytes += itClientTx->second.second;
-		}
-		std::map<Ptr<Node>, EpsBearer>::iterator itBearer = ueBearerMap.find((*itNetDev)->GetNode());
-		if (itBearer != ueBearerMap.end()) {
-			devQciIndex = itBearer->second.qci;
-		}
-
-		statsUeFile << rnti << ";" << devQciIndex << ";" << devTbBytes << ";" << devTxPackets << ";"
-				<< devTxBytes << "\n";
-	}
+//	for (NetDeviceContainer::Iterator itNetDev = ueAllDevs.Begin(); itNetDev != ueAllDevs.End(); itNetDev++) {
+//		uint16_t rnti = (*itNetDev)->GetObject<LteUeNetDevice>()->GetRrc()->GetRnti();
+//		std::map<uint16_t, unsigned long>::iterator it = ulTbMap.find(rnti);
+//
+//		unsigned long devTbBytes = 0;
+//		int devQciIndex = 0;
+//		unsigned int devTxPackets = 0;
+//		unsigned long devTxBytes = 0;
+//
+//		if (it != ulTbMap.end()) {
+//			devTbBytes = it->second;
+//		}
+//		std::map<Ptr<NetDevice>, std::pair<unsigned int, unsigned long> >::iterator itClientTx =
+//				clientTxMap.find(*itNetDev);
+//		if (itClientTx != clientTxMap.end()) {
+//			devTxPackets += itClientTx->second.first;
+//			devTxBytes += itClientTx->second.second;
+//		}
+//		std::map<Ptr<Node>, EpsBearer>::iterator itBearer = ueBearerMap.find((*itNetDev)->GetNode());
+//		if (itBearer != ueBearerMap.end()) {
+//			devQciIndex = itBearer->second.qci;
+//		}
+//
+//		statsUeFile << rnti << ";" << devQciIndex << ";" << devTbBytes << ";" << devTxPackets << ";"
+//				<< devTxBytes << "\n";
+//	}
 
 	Simulator::Destroy();
 	statsGeralFile.close();
-	statsUeFile.close();
+//	statsUeFile.close();
 
 	return 0;
 }

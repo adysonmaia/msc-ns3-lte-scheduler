@@ -33,13 +33,13 @@ function createImage($type, $field) {
 	"set style data yerrorlines\n".
 	"set terminal pngcairo size $imgW,$imgH enhanced font 'Verdana,10'\n".
 	"set output \"$fileName.png\"\n".
-	"plot \"$fileName.dat\" using 1:2:3:4,\\\n".
+	"plot \"$fileName.csv\" using 1:2:3:4,\\\n".
 	"\"\" using 1:5:6:7,\\\n".
 	"\"\" using 1:8:9:10,\\\n".
 	"\"\" using 1:11:12:13,\\\n".
 	"\"\" using 1:14:15:16";
 	
-	file_put_contents("result-$type-$field.p", $command);
+// 	file_put_contents("result-$type-$field.p", $command);
 	
 	$ph = popen($gnuPlotPath, 'w');
 	fwrite($ph, $command);
@@ -47,6 +47,8 @@ function createImage($type, $field) {
 }
 
 $gnuPlotPath = "/usr/bin/gnuplot";
+if (PHP_OS == "Darwin")
+	$gnuPlotPath = "/opt/local/bin/gnuplot";
 $separator=";";
 $nH2h=30;
 $nM2mList=array(0, 50, 100, 150, 200, 250);
