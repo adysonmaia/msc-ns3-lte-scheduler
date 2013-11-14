@@ -591,8 +591,7 @@ void M2mMacScheduler::DoSchedDlTriggerReq(
 	std::vector<struct RachListElement_s>::iterator itRach;
 	for (itRach = m_rachList.begin(); itRach != m_rachList.end(); itRach++) {
 		NS_ASSERT_MSG(
-				m_amc->GetTbSizeFromMcs(m_ulGrantMcs, m_cschedCellConfig.m_ulBandwidth)
-						> (*itRach).m_estimatedSize,
+				m_amc->GetTbSizeFromMcs(m_ulGrantMcs, m_cschedCellConfig.m_ulBandwidth) > (*itRach).m_estimatedSize,
 				" Default UL Grant MCS does not allow to send RACH messages");
 		BuildRarListElement_s newRar;
 		newRar.m_rnti = (*itRach).m_rnti;
@@ -1189,7 +1188,7 @@ void M2mMacScheduler::DoSchedUlMacCtrlInfoReq(
 			}
 
 			uint16_t rnti = params.m_macCeList.at(i).m_rnti;
-			NS_LOG_LOGIC ("UL RNTI " << rnti << " Buffer " << buffer);
+//			NS_LOG_LOGIC ("UL RNTI " << rnti << " Buffer " << buffer);
 			it = m_ceBsrRxed.find(rnti);
 			if (it == m_ceBsrRxed.end()) {
 				// create the new entry
@@ -1420,14 +1419,16 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 	uint16_t nRbAvailable = rbMap.GetAvailableRbSize();
 	h2hRbDemand = std::min(h2hRbDemand, nRbAvailable);
 	uint16_t m2mMinRbDemand = static_cast<uint16_t>(std::max(
-			floor(m_minPercentM2mRb * nRbAvailable / m_minM2mRb),
-			floor((nRbAvailable - h2hRbDemand) / m_minM2mRb)));
+			floor((m_minPercentM2mRb * nRbAvailable) / m_minM2mRb),
+			floor((nRbAvailable - h2hRbDemand) / static_cast<double>(m_minM2mRb))));
 	m2mMinRbDemand = m_minM2mRb * std::min(m2mMinRbDemand, static_cast<uint16_t>(m2mList.size()));
 	uint16_t nH2hRb = nRbAvailable - m2mMinRbDemand;
 
 	if (nRbAvailable > 0 && (h2hList.size() > 0 || m2mList.size() > 0)) {
 		NS_LOG_INFO("\nUl Frame no. " << (params.m_sfnSf >> 4) << " subframe no. " << (0xF & params.m_sfnSf));
-		NS_LOG_INFO("H2H size: " << h2hList.size() << " M2M size " << m2mList.size() << " RB Available: " << nRbAvailable << ", H2H RB Demand: " << h2hRbDemand << ", H2H RB: " << nH2hRb << ", M2M RB Demand: " << m2mMinRbDemand);
+		//
+		NS_LOG_INFO("H2H size: " << h2hList.size() << " M2M size " << m2mList.size() << " RB Available: " << nRbAvailable
+				<< ", H2H RB Demand: " << h2hRbDemand << ", H2H RB: " << nH2hRb << ", M2M RB Demand: " << m2mMinRbDemand);
 	}
 
 	if (h2hList.size() > 0 && nH2hRb > 0) {

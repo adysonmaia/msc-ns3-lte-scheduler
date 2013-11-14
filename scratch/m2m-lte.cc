@@ -36,6 +36,10 @@
 
 using namespace ns3;
 
+#ifndef UINT32_MAX
+#define UINT32_MAX 4294967295U
+#endif
+
 struct StatsTools_s {
 	std::string type;
 	NetDeviceContainer *ptr_netDevContainer;
@@ -65,6 +69,10 @@ void ClientTxCallback(std::map<Ptr<NetDevice>, std::pair<unsigned int, unsigned 
 //	}
 	if (packet->GetSize() == 0)
 		return;
+	M2mTag m2mTag;
+	if (!packet->FindFirstMatchingByteTag(m2mTag)) {
+		return;
+	}
 	Ptr<NetDevice> netDevice = ipv4->GetNetDevice(interface);
 	std::map<Ptr<NetDevice>, std::pair<unsigned int, unsigned long> >::iterator itTx = txMap->find(netDevice);
 	if (itTx != txMap->end()) {
@@ -145,6 +153,8 @@ int main(int argc, char *argv[]) {
 	Config::SetDefault("ns3::LteEnbRrc::SrsPeriodicity", UintegerValue(320));
 	Config::SetDefault("ns3::LteEnbMac::NumberOfRaPreambles", UintegerValue(64));
 	Config::SetDefault("ns3::LteEnbMac::PreambleTransMax", UintegerValue(200));
+	Config::SetDefault("ns3::LteRlcUm::MaxTxBufferSize", UintegerValue(UINT32_MAX));
+	Config::SetDefault("ns3::LteRlcTm::MaxTxBufferSize", UintegerValue(UINT32_MAX));
 
 	CommandLine cmd;
 	cmd.AddValue("scheduler", "Scheduler Type [0=M2M, 1=PF, 2=RR, 3=Lioumpas]", scheduler);
@@ -187,6 +197,7 @@ int main(int argc, char *argv[]) {
 	// Lioumpas
 	case 3:
 		lteHelper->SetSchedulerType("ns3::M2mLioumpasMacScheduler");
+		lteHelper->SetSchedulerAttribute("MinPercentRBForM2M", DoubleValue(minPercentRBForM2m));
 		lteHelper->SetSchedulerAttribute("MinRBPerM2M", UintegerValue(minRBPerM2m));
 		lteHelper->SetSchedulerAttribute("MinRBPerH2H", UintegerValue(minRBPerH2h));
 		lteHelper->SetSchedulerAttribute("UseM2MQoSClass", BooleanValue(useM2mQosClass));
