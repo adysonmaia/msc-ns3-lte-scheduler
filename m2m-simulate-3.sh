@@ -11,8 +11,8 @@ nH2H=0
 nRbM2M=3
 nRbH2H=3
 minPerRbM2M=1
-bandwidth=6
-m2mDelayWeight=0.7
+bandwidth=15
+m2mDelayWeight=0.72
 
 for index in {0..9}
 do
@@ -24,23 +24,23 @@ do
         for scheduler in 0 3
         do
 
-            useClass=0
-            if [ $scheduler -eq 0 ]; then
-                useClass=1
-            fi
+#            useClass=0
+#            if [ $scheduler -eq 0 ]; then
+#                useClass=1
+#            fi
 
-#            for useClass in 1 0
-#            do
-#                if [ $useClass -eq 1 ] && [ $scheduler -eq 3 ]
-#                then
-#                    continue
-#                fi
+            for useClass in 1 0
+            do
+                if [ $useClass -eq 1 ] && [ $scheduler -eq 3 ]
+                then
+                    continue
+                fi
 
-            echo -e "Scheduler: $scheduler - H2H: $nH2H - M2M T: $nM2MT - M2M R: $nM2MR - useM2MQoSClass: $useClass - index: $index"
-            params="--scheduler=$scheduler --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --useM2MQoSClass=$useClass $paramsGeneral"
-            command="$simulator $params'"
-            eval $command
-#           done
+                echo -e "Scheduler: $scheduler - H2H: $nH2H - M2M T: $nM2MT - M2M R: $nM2MR - useM2MQoSClass: $useClass - index: $index"
+                params="--scheduler=$scheduler --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --useM2MQoSClass=$useClass $paramsGeneral"
+                command="$simulator $params'"
+                eval $command
+           done
         done
     done
 done
