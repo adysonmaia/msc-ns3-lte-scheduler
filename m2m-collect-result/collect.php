@@ -31,6 +31,11 @@ function createImage($type, $field) {
 		$yMax = $imageDataList["field"][$field]["yMax"];
 		$yRange = "set yrange [$yMin:$yMax]\n";
 	}
+	$xTics = array();
+	foreach ($nM2mList as $nM2m) {
+		$xTics[] = $nM2m + $nH2h;
+	}
+	$xTics = "set xtics(" . implode(",", $xTics) . ")\n";
 
 	$command =
 	"reset\n".
@@ -39,12 +44,19 @@ function createImage($type, $field) {
 	"set xlabel \"$xLabel\"\n".
 	"set ylabel \"$yLabel\"\n".
 	"set xrange [$xMin:$xMax]\n".
-	"set xtics $xMin,$xStep,$xMax\n".
-	"$yRange".
+// 	"set xtics $xMin,$xStep,$xMax\n".
+	$yRange.
+	$xTics.
 	"set key below box\n".
 	"set key autotitle columnhead\n".
 	"set grid y\n".
 	"set style data yerrorlines\n".
+	"set style line 1 pointtype 4\n".
+	"set style line 2 pointtype 6\n".
+	"set style line 3 pointtype 8\n".
+	"set style line 4 pointtype 2\n".
+	"set style line 5 pointtype 12\n".
+	"set style increment user\n".
 	"set terminal pngcairo size $imgW,$imgH enhanced font 'Verdana,10'\n".
 	"set output \"$fileName.png\"\n".
 	"plot \"$fileName.csv\" using 1:2:3:4,\\\n";
