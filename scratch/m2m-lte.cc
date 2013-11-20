@@ -117,8 +117,9 @@ int main(int argc, char *argv[]) {
 	bool enableM2m = true;
 	uint16_t nM2mTrigger = 150;
 	uint16_t nM2mRegular = 50;
-	uint16_t nH2h = 30;
-	uint16_t nH2hVideo, nH2hVoip, nH2hFtp;
+	uint16_t nH2hVideo = 10;
+	uint16_t nH2hVoip = 10;
+	uint16_t nH2hFtp = 10;
 	double minRadius = 100;
 	double maxRadius = 1400;
 	unsigned int bandwidth = 25; // n RB
@@ -154,7 +155,9 @@ int main(int argc, char *argv[]) {
 	cmd.AddValue("scheduler", "Scheduler Type [0=M2M, 1=PF, 2=RR, 3=Lioumpas]", scheduler);
 	cmd.AddValue("nM2MTrigger", "Number of UE to M2M event driven", nM2mTrigger);
 	cmd.AddValue("nM2MRegular", "Number of UE to M2M time driven", nM2mRegular);
-	cmd.AddValue("nH2H", "Number of UE to H2H", nH2h);
+	cmd.AddValue("nH2HVoIP", "Number of UE to H2H VoIP", nH2hVoip);
+	cmd.AddValue("nH2HVideo", "Number of UE to H2H Video", nH2hVideo);
+	cmd.AddValue("nH2HFTP", "Number of UE to H2H FTP", nH2hFtp);
 	cmd.AddValue("minRBPerM2M", "min resource block per M2M UE", minRBPerM2m);
 	cmd.AddValue("minPercentRBForM2M", "min percentage of resource blocks available for M2M UE", minPercentRBForM2m);
 	cmd.AddValue("minRBPerH2H", "min resource block demand per H2H UE", minRBPerH2h);
@@ -233,10 +236,6 @@ int main(int argc, char *argv[]) {
 //	LogComponentEnable("LteRlcUm", LOG_LEVEL_ALL);
 
 	RngSeedManager::SetRun(currentExecution + 1);
-
-	nH2hVoip = nH2h / 3;
-	nH2hFtp = nH2hVoip;
-	nH2hVideo = nH2h - nH2hVoip - nH2hFtp;
 
 	// Create Nodes: eNodeB and UE
 	NodeContainer enbNodes;

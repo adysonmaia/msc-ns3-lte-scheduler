@@ -7,7 +7,9 @@ simTime=3
 intTrigger=0.05
 minCqi=0
 maxCqi=5
-nH2H=30
+nH2HVoIP=10
+nH2HVideo=10
+nH2HFTP=10
 nM2MT=83
 nM2MR=167
 nRbH2H=3
@@ -20,7 +22,7 @@ minPerRbM2M=0.48
 
 for index in {0..9}
 do
-    paramsGeneral="--simTime=$simTime --nH2H=$nH2H --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --minRBPerH2H=$nRbH2H --nExec=$index"
+    paramsGeneral="--simTime=$simTime --nH2HVoIP=$nH2HVoIP --nH2HVideo=$nH2HVideo --nH2HFTP=$nH2HFTP --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --minRBPerH2H=$nRbH2H --nExec=$index"
     for delayWeight in 0.7 0.5 1 0 0.8 0.3 0.9
     do
         paramsGeneral="$paramsGeneral --ns3::M2mMacScheduler::M2MDelayWeight=$delayWeight"
