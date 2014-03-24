@@ -16,7 +16,7 @@ nRbH2H=3
 bandwidth=25
 scheduler=0
 useClass=1
-delayWeight-0.72
+delayWeight=0.72
 nRbM2M=3
 minPerRbM2M=0.48
 
