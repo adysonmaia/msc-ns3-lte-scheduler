@@ -229,7 +229,7 @@ int main(int argc, char *argv[]) {
 
 	// Uncomment to enable logging
 //	lteHelper->EnableLogComponents();
-//	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
+	LogComponentEnable("M2mMacScheduler", LOG_LEVEL_ALL);
 //	LogComponentEnable("M2mLioumpasMacScheduler", LOG_LEVEL_ALL);
 //	LogComponentEnable("M2mUdpServer", LOG_LEVEL_INFO);
 //	LogComponentEnable("M2mUdpClientApplication", LOG_LEVEL_INFO);

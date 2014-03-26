@@ -1845,7 +1845,7 @@ void M2mMacScheduler::SchedUlM2m(const std::vector<uint16_t> &m2mList, M2mRbAllo
 		tdValue = (1.0 - m_m2mDelayWeight) * tdThroughputValue + m_m2mDelayWeight * tdDelayValue;
 		tdValue = std::max(tdValue, 0.0);
 		m2mTDValues.insert(std::pair<uint16_t, double>(rnti, tdValue));
-//		NS_LOG_INFO("rnti " << rnti << " td value " << tdValue << " delay " << (*itDelay).second);
+		NS_LOG_INFO("rnti " << rnti << " td value " << tdValue << " delay " << (*itDelay).second);
 	}
 	std::vector<uint16_t> m2mChosen;
 	while (m2mChosen.size() < nMaxM2m) {
@@ -2159,7 +2159,8 @@ void M2mMacScheduler::UpdateM2MAccessGrantTimers(const std::vector<uint16_t> &ue
 			}
 
 			std::map<uint16_t, EpsBearer::Qci>::iterator itQci = m_ueUlQci.find(*itM2m);
-			if (itQci != m_ueUlQci.end() /*&& (*itQci).second == EpsBearer::NGBR_M2M_TRIGGER_REPORT*/) {
+//			if (itQci != m_ueUlQci.end() /*&& (*itQci).second == EpsBearer::NGBR_M2M_TRIGGER_REPORT*/) {
+			if (itQci != m_ueUlQci.end() && (*itQci).second == EpsBearer::NGBR_M2M_TRIGGER_REPORT) {
 				NS_LOG_INFO("rnti " << *itM2m << " qci " << (*itQci).second << " waitTime " << waitTime << " delay " << delay);
 			}
 

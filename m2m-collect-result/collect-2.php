@@ -6,9 +6,11 @@ $scheduler=0;
 $nExec=1;
 $useClass=1;
 $bandwidth=25;
-$delayWeightList=array("0","0.3","0.5","0.7","0.8","0.9","1");
+//$delayWeightList=array("0","0.3","0.5","0.7","0.8","0.9","1");
+$delayWeightList=array("1", "0.8", "0.75", "0.72", "0.7", "0.5", "0.3", "0");
 $nRbPerM2mList=array(3);
-$nMinM2mPerTtiList=array(2,3,4);
+// $nMinM2mPerTtiList=array(2,3,4);
+$nMinM2mPerTtiList=array(4);
 
 $separator=";";
 $fieldsIndex = array("type"=>0, "throughput"=>6, "fairness"=>7, "rx"=>12, "rxDelay"=>14, "tx"=>8, "txLoss"=>16);

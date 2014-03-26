@@ -33,6 +33,7 @@ do
         echo -e "Scheduler: $scheduler - minRBPerM2M: $nRbM2M - minPercentRBForM2M: $minPerRbM2M - useM2MQoSClass: $useClass - index: $index"
         params="--scheduler=$scheduler --minRBPerM2M=$nRbM2M --minPercentRBForM2M=$minPerRbM2M --useM2MQoSClass=$useClass --suffixStatsFile=$fileSuffix $paramsGeneral"
         command="$simulator $params'"
+        echo -e "$command"
         eval $command
     done
 done
