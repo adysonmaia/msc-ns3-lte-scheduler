@@ -79,14 +79,15 @@ void ClientTxCallback(std::map<Ptr<NetDevice>, std::pair<unsigned int, unsigned 
 }
 
 std::vector<EpsBearer> GetAvailableM2mRegularEpsBearers(double simulationTime, int minCqiIndex = 0,
-		int maxCqiIndex = 10) {
+		int maxCqiIndex = 11) {
 	std::vector<EpsBearer> response;
 	EpsBearer allBearers[] = { EpsBearer(EpsBearer::NGBR_M2M_REGULAR_REPORT_1), EpsBearer(
 			EpsBearer::NGBR_M2M_REGULAR_REPORT_2), EpsBearer(EpsBearer::NGBR_M2M_REGULAR_REPORT_3), EpsBearer(
 			EpsBearer::NGBR_M2M_REGULAR_REPORT_4), EpsBearer(EpsBearer::NGBR_M2M_REGULAR_REPORT_5), EpsBearer(
 			EpsBearer::NGBR_M2M_REGULAR_REPORT_6), EpsBearer(EpsBearer::NGBR_M2M_REGULAR_REPORT_7), EpsBearer(
 			EpsBearer::NGBR_M2M_REGULAR_REPORT_8), EpsBearer(EpsBearer::NGBR_M2M_REGULAR_REPORT_9), EpsBearer(
-			EpsBearer::NGBR_M2M_REGULAR_REPORT_10), EpsBearer(EpsBearer::NGBR_M2M_REGULAR_REPORT_11) };
+			EpsBearer::NGBR_M2M_REGULAR_REPORT_10), EpsBearer(EpsBearer::NGBR_M2M_REGULAR_REPORT_11), EpsBearer(
+			EpsBearer::NGBR_M2M_REGULAR_REPORT_12) };
 
 	simulationTime = simulationTime * 1000; // s => ms
 	for (int i = minCqiIndex; i <= maxCqiIndex; i++) {

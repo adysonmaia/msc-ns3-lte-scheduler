@@ -86,6 +86,7 @@ EpsBearer::IsGbr () const
     case NGBR_M2M_REGULAR_REPORT_9:
     case NGBR_M2M_REGULAR_REPORT_10:
     case NGBR_M2M_REGULAR_REPORT_11:
+    case NGBR_M2M_REGULAR_REPORT_12:
     	return false;
     default:
       NS_FATAL_ERROR ("unknown QCI value " << qci);
@@ -141,6 +142,8 @@ EpsBearer::GetPriority () const
     	return 19;
     case NGBR_M2M_REGULAR_REPORT_11:
     	return 20;
+    case NGBR_M2M_REGULAR_REPORT_12:
+        return 21;
     default:
       NS_FATAL_ERROR ("unknown QCI value " << qci);
       return 0;
@@ -184,16 +187,18 @@ EpsBearer::GetPacketDelayBudgetMs () const
     case NGBR_M2M_REGULAR_REPORT_5:
     	return 300;
     case NGBR_M2M_REGULAR_REPORT_6:
-    	return 500;
+        return 400;
     case NGBR_M2M_REGULAR_REPORT_7:
-    	return 1000;
+    	return 500;
     case NGBR_M2M_REGULAR_REPORT_8:
-    	return 5000;
+    	return 1000;
     case NGBR_M2M_REGULAR_REPORT_9:
-    	return 15000;
+    	return 5000;
     case NGBR_M2M_REGULAR_REPORT_10:
-    	return 30000;
+    	return 15000;
     case NGBR_M2M_REGULAR_REPORT_11:
+    	return 30000;
+    case NGBR_M2M_REGULAR_REPORT_12:
     	return 60000;
     default:
       NS_FATAL_ERROR ("unknown QCI value " << qci);
@@ -238,6 +243,7 @@ EpsBearer::GetPacketErrorLossRate () const
     case NGBR_M2M_REGULAR_REPORT_9:
     case NGBR_M2M_REGULAR_REPORT_10:
     case NGBR_M2M_REGULAR_REPORT_11:
+    case NGBR_M2M_REGULAR_REPORT_12:
     	return 1.0e-2;
     default:
       NS_FATAL_ERROR ("unknown QCI value " << qci);

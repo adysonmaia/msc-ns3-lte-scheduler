@@ -98,6 +98,7 @@ struct EpsBearer
     NGBR_M2M_REGULAR_REPORT_9 = 19,
     NGBR_M2M_REGULAR_REPORT_10 = 20,
     NGBR_M2M_REGULAR_REPORT_11 = 21,
+    NGBR_M2M_REGULAR_REPORT_12 = 22,
   } qci;
 
   GbrQosInformation gbrQosInfo;

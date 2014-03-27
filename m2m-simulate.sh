@@ -6,7 +6,7 @@ simulator="time $path/waf --run='m2m-lte"
 simTime=3
 intTrigger=0.05
 minCqi=0
-maxCqi=5
+maxCqi=6
 nH2HVoIP=10
 nH2HVideo=10
 nH2HFTP=10
