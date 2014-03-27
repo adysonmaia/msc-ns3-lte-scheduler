@@ -49,13 +49,10 @@ if (PHP_OS == "Darwin")
 	$gnuPlotPath = "/opt/local/bin/gnuplot";
 $separator=";";
 $nH2h=30;
-// $nM2mList=array(0, 50, 100, 150, 200, 250);
 $nM2mList=array(250);
-// $schedulers=array(0, 1, 2, 3);
+$nMinPercentList=array("0.12", "0.24", "0.36", "0.48", "0.6", "0.72", "0.84", "0.96");
 $schedulers=array(0);
-// $nExec=40;
 $nExec=10;
-$delayWeightList=array("1", "0.99", "0.97", "0.96", "0.95", "0.94", "0.9", "0.92", "0.85", "0.8", "0.75", "0.72", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1", "0");
 $fieldsIndex = array("type"=>0, "throughput"=>6, "fairness"=>7, "rx"=>12, "rxDelay"=>14, "tx"=>8, "txLoss"=>16);
 $schedulerNameIndex = array(
 		0=>array(0=>"M2M without Class", 1=>"M2M with Class"),
@@ -63,15 +60,16 @@ $schedulerNameIndex = array(
 		2=>array(0=>"RR", 1=>"RR"),
 		3=>array(0=>"Lioumpas Alg. 2", 1=>"Lioumpas Alg. 2"),
 );
-$typeRespList=array("M2M Trigger", "M2M Regular All", "M2M");
+$typeRespList=array("H2H All", "M2M Trigger", "M2M Regular All", "M2M");
 $schedulerRespList=array($schedulerNameIndex[0][1]);
 
 $fieldRespList=array("throughput", "delayPercent", "fairness");
 $imageDataList=array(
 		"type"=>array(
-				$typeRespList[0]=>array("title"=>"M2M Event Driven Traffic"),
-				$typeRespList[1]=>array("title"=>"M2M Time Driven Traffic"),
-				$typeRespList[2]=>array("title"=>"M2M Traffic"),
+				$typeRespList[0]=>array("title"=>"H2H Mixed Traffic"),
+				$typeRespList[1]=>array("title"=>"M2M Event Driven Traffic"),
+				$typeRespList[2]=>array("title"=>"M2M Time Driven Traffic"),
+				$typeRespList[3]=>array("title"=>"M2M Traffic"),
 		),
 		"field"=>array(
 				$fieldRespList[0] => array("title"=>"Transport block Throughput", "yLabel"=>"Throughput (kbps)"),
@@ -85,13 +83,13 @@ $scheduler=0;
 $nM2mT = 83;
 $nM2mR = 167;
 $nRb = 3;
-$nMinPercent = 0.48;
+$delayWeight= 0.72;
+
 $values=array();
-foreach ($delayWeightList as $weight) {
+foreach ($nMinPercentList as $nMinPercent) {
 	$valuesCount = 0;
-	$schName = $schedulerNameIndex[$scheduler][$useClass];
 	for ($exec = 0; $exec < $nExec; $exec++) {
-		$fileName = "m2m-stats-geral-s($scheduler)-c($useClass)-h2h($nH2h)-m2mT($nM2mT)-m2mR($nM2mR)-$exec-$weight-$nRb-$nMinPercent.csv";
+		$fileName = "m2m-stats-geral-s($scheduler)-c($useClass)-h2h($nH2h)-m2mT($nM2mT)-m2mR($nM2mR)-$exec-$delayWeight-$nRb-$nMinPercent.csv";
 		if (!file_exists($fileName)) {
 			echo "Arquivo nao encontrado $fileName\n"; 
 			continue;
@@ -116,9 +114,9 @@ foreach ($delayWeightList as $weight) {
 			$lossPercent *= 100.0;
 			$delayPercent *= 100.0;
 		
-			if (!key_exists($weight, $values))
-				$values[$weight] = array();
-			$schValues=$values[$weight];
+			if (!key_exists($nMinPercent, $values))
+				$values[$nMinPercent] = array();
+			$schValues=$values[$nMinPercent];
 			if (!key_exists($type, $schValues)) {
 				$schValues[$type]["avg"] = array("throughput"=>0.0, "fairness"=> 0.0, "delayPercent"=>0.0, "lossPercent"=>0.0);
 				$schValues[$type]["stdDvt"] = array("throughput"=>array(), "fairness"=>array(), "delayPercent"=>array(), "lossPercent"=>array());
@@ -131,7 +129,7 @@ foreach ($delayWeightList as $weight) {
 			$schValues[$type]["stdDvt"]['fairness'][] = $fairness;
 			$schValues[$type]["stdDvt"]['delayPercent'][] = $delayPercent;
 			$schValues[$type]["stdDvt"]['lossPercent'][] = $lossPercent;
-			$values[$weight] = $schValues;
+			$values[$nMinPercent] = $schValues;
 		}
 		$valuesCount++;
 	}
@@ -140,7 +138,7 @@ foreach ($delayWeightList as $weight) {
 		continue;
 	}
 	
-	$schValues=$values[$weight];
+	$schValues=$values[$nMinPercent];
 	foreach ($schValues as $type => $row) {
 		$schValues[$type]["avg"]['throughput'] /= $valuesCount;
 		$schValues[$type]["avg"]['fairness'] /= $valuesCount;
@@ -160,7 +158,7 @@ foreach ($delayWeightList as $weight) {
 			}
 		}
 	}
-	$values[$weight] = $schValues;
+	$values[$nMinPercent] = $schValues;
 }
 
 foreach ($typeRespList as $type) {
@@ -170,15 +168,15 @@ foreach ($typeRespList as $type) {
 // 		$line = array("Delay Weight", "Avg", "Error Low", "Error High");
 // 		$content .= implode($separator, $line) . "\n";
 		
-		foreach ($delayWeightList as $weight) {
+		foreach ($nMinPercentList as $nMinPercent) {
 			$line = array();
-			$avg = $values[$weight][$type]["avg"][$field];
-			$stdDvt = $values[$weight][$type]["stdDvt"][$field];
-			$runs = $values[$weight][$type]["runs"];
+			$avg = $values[$nMinPercent][$type]["avg"][$field];
+			$stdDvt = $values[$nMinPercent][$type]["stdDvt"][$field];
+			$runs = $values[$nMinPercent][$type]["runs"];
 			$error = getStudentTDistribution($runs - 1)*sqrt($stdDvt/$runs);
 			$errorLow = $avg - $error;
 			$errorHigh = $avg + $error;
-			$line[] = $weight;
+			$line[] = $nMinPercent;
 			$line[] = $avg;
 			$line[] = $errorLow;
 			$line[] = $errorHigh;

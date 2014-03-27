@@ -13,9 +13,13 @@ nH2HFTP=10
 nRbM2M=3
 nRbH2H=3
 minPerRbM2M=0.48
-m2mDelayWeight=0.72
+#m2mDelayWeight=0.72
+m2mDelayWeight=0.95
 
-for index in {0..9}
+#for index in {0..9}
+#for index in {10..19}
+#for index in {20..29}
+for index in {0..29}
 do
     paramsGeneral="--simTime=$simTime --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --minRBPerH2H=$nRbH2H --minRBPerM2M=$nRbM2M --minPercentRBForM2M=$minPerRbM2M --nH2HVoIP=$nH2HVoIP --nH2HVideo=$nH2HVideo --nH2HFTP=$nH2HFTP --nExec=$index"
     for nM2M in 0 50 100 150 200 250
@@ -30,13 +34,13 @@ do
             command="$simulator $params'"
             eval $command
         done
-        useClass=0
-        for scheduler in {1..3}
-        do
-            echo -e "Scheduler: $scheduler - H2H VoIP: $nH2HVoIP - H2H Video: $nH2HVideo - H2H FTP: $nH2HFTP - M2M T: $nM2MT - M2M R: $nM2MR - useM2MQoSClass: $useClass - index: $index"
-            params="--scheduler=$scheduler --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --useM2MQoSClass=$useClass $paramsGeneral"
-            command="$simulator $params'"
-            eval $command
-        done
+#        useClass=0
+#        for scheduler in {1..3}
+#        do
+#            echo -e "Scheduler: $scheduler - H2H VoIP: $nH2HVoIP - H2H Video: $nH2HVideo - H2H FTP: $nH2HFTP - M2M T: $nM2MT - M2M R: $nM2MR - useM2MQoSClass: $useClass - index: $index"
+#            params="--scheduler=$scheduler --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --useM2MQoSClass=$useClass $paramsGeneral"
+#            command="$simulator $params'"
+#            eval $command
+#        done
     done
 done
