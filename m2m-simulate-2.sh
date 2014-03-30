@@ -20,10 +20,10 @@ useClass=1
 nRbM2M=3
 minPerRbM2M=0.48
 
-for index in {0..9}
+#for index in {0..9}
 #for index in {10..19}
 #for index in {20..29}
-#for index in {0..29}
+for index in {0..29}
 do
     paramsGeneral="--simTime=$simTime --nH2HVoIP=$nH2HVoIP --nH2HVideo=$nH2HVideo --nH2HFTP=$nH2HFTP --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --minRBPerH2H=$nRbH2H --nExec=$index"
     for delayWeight in 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 0.95 1
