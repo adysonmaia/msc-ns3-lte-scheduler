@@ -19,6 +19,7 @@
 #include <ns3/simulation-singleton.h>
 #include <cfloat>
 #include <set>
+#include <iostream>
 
 #ifndef UINT8_MAX
 #define UINT8_MAX 255
@@ -239,6 +240,7 @@ M2mMacScheduler::M2mMacScheduler() :
 
 M2mMacScheduler::~M2mMacScheduler() {
 //	NS_LOG_FUNCTION(this);
+	m_congestionFile.close();
 }
 
 void M2mMacScheduler::DoDispose() {
@@ -1335,6 +1337,13 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 //	NS_LOG_INFO(" Ul Frame no. " << (params.m_sfnSf >> 4) << " subframe no. "
 //			<< (0xF & params.m_sfnSf));
 
+//	if (!m_congestionFile.is_open()) {
+//		std::ostringstream filePath;
+//		filePath << "m2m-congestion-" << m_m2mDelayWeight << "-" << m_minM2mRb << "-" << m_minPercentM2mRb << ".csv";
+//		m_congestionFile.open(filePath.str().c_str(), std::ios::out);
+//	}
+//	m_congestionFile << (params.m_sfnSf >> 4) << ";" << (0xF & params.m_sfnSf) << ";";
+
 	RefreshUlCqiMaps();
 	RefreshM2MAccessGrantTimers();
 
@@ -1442,6 +1451,7 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 	if (m2mList.size() > 0 && nM2mRb > 0) {
 		SchedUlM2m(m2mList, rbMap, nM2mRb, response);
 	} else {
+//		m_congestionFile << "0;0;0;0";
 		nH2hRb = 0;
 	}
 
@@ -1480,6 +1490,8 @@ void M2mMacScheduler::DoSchedUlTriggerReq(
 
 	m_ulAllocationMaps.insert(std::pair<uint16_t, M2mRbAllocationMap>(params.m_sfnSf, rbMap));
 	m_schedSapUser->SchedUlConfigInd(response);
+
+	m_congestionFile << "\n";
 }
 
 // --------------------------------------------------------------
@@ -1862,6 +1874,25 @@ void M2mMacScheduler::SchedUlM2m(const std::vector<uint16_t> &m2mList, M2mRbAllo
 			m2mTDValues.erase(maxPriority.first);
 		}
 	}
+
+
+	//Test
+//	int m2mTriggerTotal=0;
+//	int m2mTriggerAccepted=0;
+//	for (itM2m = m2mList.begin(); itM2m != m2mList.end(); itM2m++) {
+//		std::map<uint16_t, EpsBearer::Qci>::iterator itQci = m_ueUlQci.find(*itM2m);
+//		if (itQci != m_ueUlQci.end() && (*itQci).second == EpsBearer::NGBR_M2M_TRIGGER_REPORT) {
+//			m2mTriggerTotal++;
+//		}
+//	}
+//	for (itM2m = m2mChosen.begin(); itM2m != m2mChosen.end(); itM2m++) {
+//		std::map<uint16_t, EpsBearer::Qci>::iterator itQci = m_ueUlQci.find(*itM2m);
+//		if (itQci != m_ueUlQci.end() && (*itQci).second == EpsBearer::NGBR_M2M_TRIGGER_REPORT) {
+//			m2mTriggerAccepted++;
+//		}
+//	}
+//	m_congestionFile << m2mList.size() << ";" <<  m2mChosen.size() << ";" << m2mTriggerTotal << ";" << m2mTriggerAccepted;
+
 
 	// Frequency Domain
 	std::map<uint16_t, double> m2mFDValues;

@@ -21,11 +21,11 @@ delayWeight=0.95
 nRbM2M=3
 minPerRbM2M=0.48
 
-#for index in {0..9}
+for index in {0..9}
 #for index in {10..19}
 #for index in {20..29}
 #for index in {0..29}
-for index in {29..0}
+#for index in {29..0}
 do
     paramsGeneral="--simTime=$simTime --nH2HVoIP=$nH2HVoIP --nH2HVideo=$nH2HVideo --nH2HFTP=$nH2HFTP --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --minRBPerH2H=$nRbH2H --nExec=$index --ns3::M2mMacScheduler::M2MDelayWeight=$delayWeight"
 

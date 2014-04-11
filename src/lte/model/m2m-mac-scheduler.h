@@ -20,6 +20,7 @@
 #include <ns3/m2m-scheduler-param.h>
 #include <vector>
 #include <map>
+#include <fstream>
 
 #define HARQ_PROC_NUM 8
 #define HARQ_DL_TIMEOUT 11
@@ -89,7 +90,7 @@ protected:
 	void DoSchedDlTriggerReq(const struct FfMacSchedSapProvider::SchedDlTriggerReqParameters& params);
 	void DoSchedDlRachInfoReq(const struct FfMacSchedSapProvider::SchedDlRachInfoReqParameters& params);
 	void DoSchedDlCqiInfoReq(const struct FfMacSchedSapProvider::SchedDlCqiInfoReqParameters& params);
-	void DoSchedUlTriggerReq(const struct FfMacSchedSapProvider::SchedUlTriggerReqParameters& params);
+	virtual void DoSchedUlTriggerReq(const struct FfMacSchedSapProvider::SchedUlTriggerReqParameters& params);
 	void DoSchedUlNoiseInterferenceReq(
 			const struct FfMacSchedSapProvider::SchedUlNoiseInterferenceReqParameters& params);
 	void DoSchedUlSrInfoReq(const struct FfMacSchedSapProvider::SchedUlSrInfoReqParameters& params);
@@ -221,6 +222,9 @@ protected:
 	Ptr<M2mSchedulerParam> m_schedulerParam;
 	bool m_useM2mQosClass;
 	double m_m2mDelayWeight;
+
+	//Test
+	std::ofstream m_congestionFile;
 };
 
 class M2mSchedulerMemberCschedSapProvider: public FfMacCschedSapProvider {
