@@ -34,13 +34,14 @@ do
             command="$simulator $params'"
             eval $command
         done
-#        useClass=0
-#        for scheduler in {1..3}
-#        do
-#            echo -e "Scheduler: $scheduler - H2H VoIP: $nH2HVoIP - H2H Video: $nH2HVideo - H2H FTP: $nH2HFTP - M2M T: $nM2MT - M2M R: $nM2MR - useM2MQoSClass: $useClass - index: $index"
-#            params="--scheduler=$scheduler --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --useM2MQoSClass=$useClass $paramsGeneral"
-#            command="$simulator $params'"
-#            eval $command
-#        done
+
+        useClass=0
+        for scheduler in {1..3}
+        do
+            echo -e "Scheduler: $scheduler - H2H VoIP: $nH2HVoIP - H2H Video: $nH2HVideo - H2H FTP: $nH2HFTP - M2M T: $nM2MT - M2M R: $nM2MR - useM2MQoSClass: $useClass - index: $index"
+            params="--scheduler=$scheduler --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --useM2MQoSClass=$useClass $paramsGeneral"
+            command="$simulator $params'"
+            eval $command
+        done
     done
 done

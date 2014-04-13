@@ -35,7 +35,8 @@ do
         nM2MR=$(($nM2M - $nM2MT))
 
 #        for nMinM2M in 0 1 2 3 4 5 6 7 8
-        for nMinM2M in 0 2 4 6 8
+        for nMinM2M in 3 5
+#        for nMinM2M in 0 2 4 6 8
         do
             minPerRbM2M=`python -c "print $nRbM2M*$nMinM2M/$bandwidth.0"`
             fileSuffix="$delayWeight-$nRbM2M-$minPerRbM2M"
