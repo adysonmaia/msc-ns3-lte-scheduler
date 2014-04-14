@@ -103,7 +103,7 @@ void M2mAbdallaMacScheduler::DoSchedUlTriggerReq(
 
 	// TODO
 	uint16_t nRbAvailable = rbMap.GetAvailableRbSize();
-	uint16_t maxM2mRbSize = nRbAvailable * m_minPercentM2mRb;
+	uint16_t maxM2mRbSize = static_cast<uint16_t>(nRbAvailable * m_minPercentM2mRb);
 	SchedUlM2m(m2mList, rbMap, maxM2mRbSize, response);
 	nRbAvailable = rbMap.GetAvailableRbSize();
 	SchedUlH2h(h2hList, rbMap, nRbAvailable, response);

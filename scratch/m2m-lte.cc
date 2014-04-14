@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
 	simStopTime = statsStartTime + statsDuration;
 
 	Ptr<LteHelper> lteHelper = CreateObject<LteHelper>();
-	Ptr<EpcHelper> epcHelper = CreateObject<EpcHelper>();
+	Ptr<PointToPointEpcHelper> epcHelper = CreateObject<PointToPointEpcHelper>();
 	lteHelper->SetEpcHelper(epcHelper);
 	Ptr<Node> pgw = epcHelper->GetPgwNode();
 

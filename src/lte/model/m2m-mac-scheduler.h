@@ -29,6 +29,14 @@
 // is no CQI for this element
 #define NO_SINR -5000
 
+#ifndef UINT8_MAX
+#define UINT8_MAX 255
+#endif
+
+#ifndef UINT32_MAX
+#define UINT32_MAX 4294967295
+#endif
+
 namespace ns3 {
 
 struct m2mFlowPerf_t {

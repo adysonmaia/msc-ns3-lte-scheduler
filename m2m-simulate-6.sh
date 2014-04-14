@@ -26,7 +26,8 @@ minPerRbM2MLow=0.36
 minPerRbM2MNormal=0.48
 minPerRbM2MHigh=0.6
 
-for index in {0..9}
+#for index in {0..9}
+for index in {10..29}
 do
     paramsGeneral="--simTime=$simTime --nH2HVoIP=$nH2HVoIP --nH2HVideo=$nH2HVideo --nH2HFTP=$nH2HFTP --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --minRBPerH2H=$nRbH2H --nExec=$index --ns3::M2mMacScheduler::M2MDelayWeight=$delayWeight --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --minPercentRBForM2M=$minPerRbM2M --minRBPerM2M=$nRbM2M  --useM2MQoSClass=$useClass --ns3::M2mMacScheduler2::MinPercentRBForM2MLow=$minPerRbM2MLow --ns3::M2mMacScheduler2::MinPercentRBForM2MNormal=$minPerRbM2MNormal --ns3::M2mMacScheduler2::MinPercentRBForM2MHigh=$minPerRbM2MHigh"
     for congestionLow in 0.1 0.2 0.3 0.4 0.5

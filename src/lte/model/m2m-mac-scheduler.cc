@@ -21,10 +21,6 @@
 #include <set>
 #include <iostream>
 
-#ifndef UINT8_MAX
-#define UINT8_MAX 255
-#endif
-
 NS_LOG_COMPONENT_DEFINE("M2mMacScheduler");
 
 namespace ns3 {
