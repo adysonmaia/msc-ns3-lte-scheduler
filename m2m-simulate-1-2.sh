@@ -29,28 +29,27 @@ do
         paramsGeneral="$paramsGeneral --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR"
 
         scheduler=4
-        useClass=1
         congestionLow=0.2
         congestionHigh=0.6
         minPerRbM2MLow=0.36
         minPerRbM2MNormal=0.48
         minPerRbM2MHigh=0.6
-#        for useClass in 1 0
+#        for useClass in 1
 #        do
-            echo -e "Scheduler: $scheduler - H2H VoIP: $nH2HVoIP - H2H Video: $nH2HVideo - H2H FTP: $nH2HFTP - M2M T: $nM2MT - M2M R: $nM2MR - useM2MQoSClass: $useClass - index: $index"
-            params="--scheduler=$scheduler --useM2MQoSClass=$useClass --ns3::M2mMacScheduler::M2MDelayWeight=$m2mDelayWeight --ns3::M2mMacScheduler2::CongestionLow=$congestionLow --ns3::M2mMacScheduler2::CongestionLow=$congestionHigh --ns3::M2mMacScheduler2::MinPercentRBForM2MLow=$minPerRbM2MLow --ns3::M2mMacScheduler2::MinPercentRBForM2MNormal=$minPerRbM2MNormal --ns3::M2mMacScheduler2::MinPercentRBForM2MHigh=$minPerRbM2MHigh $paramsGeneral"
-            command="$simulator $params'"
-            eval $command
-#       done
 
-#        useClass=0
-#        scheduler=5
-#        for scheduler in {1..3}
-#        do
 #            echo -e "Scheduler: $scheduler - H2H VoIP: $nH2HVoIP - H2H Video: $nH2HVideo - H2H FTP: $nH2HFTP - M2M T: $nM2MT - M2M R: $nM2MR - useM2MQoSClass: $useClass - index: $index"
-#            params="--scheduler=$scheduler --useM2MQoSClass=$useClass $paramsGeneral"
+#            params="--scheduler=$scheduler --useM2MQoSClass=$useClass --ns3::M2mMacScheduler::M2MDelayWeight=$m2mDelayWeight --ns3::M2mMacScheduler2::CongestionLow=$congestionLow --ns3::M2mMacScheduler2::CongestionLow=$congestionHigh --ns3::M2mMacScheduler2::MinPercentRBForM2MLow=$minPerRbM2MLow --ns3::M2mMacScheduler2::MinPercentRBForM2MNormal=$minPerRbM2MNormal --ns3::M2mMacScheduler2::MinPercentRBForM2MHigh=$minPerRbM2MHigh $paramsGeneral"
 #            command="$simulator $params'"
 #            eval $command
-#        done
+
+#       done
+
+        useClass=0
+        scheduler=5
+        echo -e "Scheduler: $scheduler - H2H VoIP: $nH2HVoIP - H2H Video: $nH2HVideo - H2H FTP: $nH2HFTP - M2M T: $nM2MT - M2M R: $nM2MR - useM2MQoSClass: $useClass - index: $index"
+        params="--scheduler=$scheduler --useM2MQoSClass=$useClass $paramsGeneral"
+        command="$simulator $params'"
+#            echo -e "$params"
+        eval $command
     done
 done

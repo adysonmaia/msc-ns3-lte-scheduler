@@ -10,6 +10,8 @@
 #include <cfloat>
 #include <ns3/m2m-mac-scheduler.h>
 #include <ns3/m2m-abdalla-mac-scheduler.h>
+#include <math.h>
+#include <algorithm>
 
 NS_LOG_COMPONENT_DEFINE("M2mAbdallaMacScheduler");
 
@@ -18,12 +20,9 @@ namespace ns3 {
 NS_OBJECT_ENSURE_REGISTERED(M2mAbdallaMacScheduler);
 
 M2mAbdallaMacScheduler::M2mAbdallaMacScheduler() {
-	// TODO Auto-generated constructor stub
-
 }
 
 M2mAbdallaMacScheduler::~M2mAbdallaMacScheduler() {
-	// TODO Auto-generated destructor stub
 }
 
 void M2mAbdallaMacScheduler::DoDispose(void) {
@@ -101,11 +100,14 @@ void M2mAbdallaMacScheduler::DoSchedUlTriggerReq(
 		SchedUlHarq(harqList, rbMap, response);
 	}
 
-	// TODO
+//	std::cout << " Ul Frame no. " << (params.m_sfnSf >> 4) << " subframe no. " << (0xF & params.m_sfnSf) << std::endl;
+
 	uint16_t nRbAvailable = rbMap.GetAvailableRbSize();
-	uint16_t maxM2mRbSize = static_cast<uint16_t>(nRbAvailable * m_minPercentM2mRb);
+	uint16_t maxM2mRbSize = static_cast<uint16_t>(floor(nRbAvailable * m_minPercentM2mRb));
+//	std::cout << "nRbAvailable " << nRbAvailable << " maxM2mRbSize " << maxM2mRbSize << " m2mList " << m2mList.size();
 	SchedUlM2m(m2mList, rbMap, maxM2mRbSize, response);
 	nRbAvailable = rbMap.GetAvailableRbSize();
+//	std::cout << " nRbAvailable " << nRbAvailable << " h2hList " << h2hList.size() << std::endl;
 	SchedUlH2h(h2hList, rbMap, nRbAvailable, response);
 
 	// Update global UE stats
@@ -151,6 +153,8 @@ void M2mAbdallaMacScheduler::SchedUlUeType(const std::vector<uint16_t> &ueList, 
 	uint16_t rbEnd = rbStart + rbSize;
 	uint16_t allocatedRbSize = 0;
 
+//	std::cout << "\n\nrbSize: " << rbSize << " rbStart: " << rbStart  << " rbEnd: " << rbEnd << "\n";
+
 	std::map<uint16_t, uint32_t> ueDelays;
 	for (std::vector<uint16_t>::const_iterator itUe = ueList.begin(); itUe != ueList.end(); itUe++) {
 		uint16_t rnti = *itUe;
@@ -183,7 +187,11 @@ void M2mAbdallaMacScheduler::SchedUlUeType(const std::vector<uint16_t> &ueList, 
 		std::map<uint16_t, std::vector<double> >::iterator itCqi = m_ueCqi.find(rntiChosen);
 
 		// TODO determinar a quantidade de recursos demandados por UE
-		for (uint16_t size = 1; size < rbStart - rbEnd; size++) {
+		uint16_t foundSize = 0;
+		int foundMcs = 0;
+		uint16_t maxSize = rbEnd - rbStart;
+		maxSize = std::min(maxSize, std::max(m_minM2mRb, static_cast<uint16_t>(rbSize/ueList.size())));
+		for (uint16_t size = 1; size <= maxSize; size++) {
 			int cqi = 0;
 			if (itCqi != m_ueCqi.end()) {
 				double spectralEfficiency = 0.0;
@@ -203,55 +211,65 @@ void M2mAbdallaMacScheduler::SchedUlUeType(const std::vector<uint16_t> &ueList, 
 			int mcs = (cqi != 0) ? m_amc->GetMcsFromCqi(cqi) : m_ulGrantMcs;
 			uint16_t sizeByte = m_amc->GetTbSizeFromMcs(mcs, size) / 8;
 
-			if (sizeByte >= bsrSizeByte || size == rbStart - rbEnd - 1) {
-				UlDciListElement_s uldci;
-				uldci.m_rnti = rntiChosen;
-				uldci.m_rbStart = rbStart;
-				uldci.m_rbLen = size;
-				uldci.m_mcs = mcs;
-				uldci.m_tbSize = m_amc->GetTbSizeFromMcs(uldci.m_mcs, size) / 8;
-				uldci.m_ndi = 1;
-				uldci.m_cceIndex = 0;
-				uldci.m_aggrLevel = 1;
-				uldci.m_ueTxAntennaSelection = 3; // antenna selection OFF
-				uldci.m_hopping = false;
-				uldci.m_n2Dmrs = 0;
-				uldci.m_tpc = 0; // no power control
-				uldci.m_cqiRequest = false; // only period CQI at this stage
-				uldci.m_ulIndex = 0; // TDD parameter
-				uldci.m_dai = 1; // TDD parameter
-				uldci.m_freqHopping = 0;
-				uldci.m_pdcchPowerOffset = 0; // not used
+//			std::cout << " sizeByte: " << sizeByte << " bsrSizeByte: " << bsrSizeByte << " size: " << size << " - " << (rbEnd - rbStart - 1) << "\n";
 
-				allocatedRbSize += size;
-				rbStart += size;
-				response.m_dciList.push_back(uldci);
-				ueDelays.erase(uldci.m_rnti);
-				rbMap.Allocate(uldci.m_rnti, rbStart, size);
-				UpdateUlRlcBufferInfo(uldci.m_rnti, uldci.m_tbSize);
-
-				std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(uldci.m_rnti);
-				if (itStats != m_flowStatsUl.end()) {
-					(*itStats).second.lastTtiBytesTrasmitted = uldci.m_tbSize;
-					(*itStats).second.lastTtiResourcesAllocated = uldci.m_rbLen;
-					(*itStats).second.lastTtiBsrReceived = uldci.m_tbSize;
-				}
-
-				if (m_harqOn == true) {
-					std::map<uint16_t, uint8_t>::iterator itProcId;
-					itProcId = m_ulHarqCurrentProcessId.find(uldci.m_rnti);
-					if (itProcId != m_ulHarqCurrentProcessId.end()) {
-						uint8_t harqId = (*itProcId).second;
-						std::map<uint16_t, UlHarqProcessesDciBuffer_t>::iterator itDci =
-								m_ulHarqProcessesDciBuffer.find(uldci.m_rnti);
-						if (itDci != m_ulHarqProcessesDciBuffer.end()) {
-							(*itDci).second.at(harqId) = uldci;
-						}
-					}
-				}
+			if (sizeByte >= bsrSizeByte || size == maxSize) {
+				foundSize = size;
+				foundMcs = mcs;
+				break;
 			}
 		}
 
+		if (foundSize > 0) {
+//			std::cout << "rntiChosen: " << rntiChosen << " foundSize: " << foundSize << " delay: "<< ueDelays.at(rntiChosen) <<  "\n";
+			UlDciListElement_s uldci;
+			uldci.m_rnti = rntiChosen;
+			uldci.m_rbStart = rbStart;
+			uldci.m_rbLen = foundSize;
+			uldci.m_mcs = foundMcs;
+			uldci.m_tbSize = m_amc->GetTbSizeFromMcs(uldci.m_mcs, uldci.m_rbLen) / 8;
+			uldci.m_ndi = 1;
+			uldci.m_cceIndex = 0;
+			uldci.m_aggrLevel = 1;
+			uldci.m_ueTxAntennaSelection = 3; // antenna selection OFF
+			uldci.m_hopping = false;
+			uldci.m_n2Dmrs = 0;
+			uldci.m_tpc = 0; // no power control
+			uldci.m_cqiRequest = false; // only period CQI at this stage
+			uldci.m_ulIndex = 0; // TDD parameter
+			uldci.m_dai = 1; // TDD parameter
+			uldci.m_freqHopping = 0;
+			uldci.m_pdcchPowerOffset = 0; // not used
+
+			ueDelays.erase(uldci.m_rnti);
+			rbMap.Allocate(uldci.m_rnti, rbStart, uldci.m_rbLen);
+			UpdateUlRlcBufferInfo(uldci.m_rnti, uldci.m_tbSize);
+			allocatedRbSize += uldci.m_rbLen;
+			rbStart += uldci.m_rbLen;
+			response.m_dciList.push_back(uldci);
+
+			std::map<uint16_t, m2mFlowPerf_t>::iterator itStats = m_flowStatsUl.find(uldci.m_rnti);
+			if (itStats != m_flowStatsUl.end()) {
+				(*itStats).second.lastTtiBytesTrasmitted = uldci.m_tbSize;
+				(*itStats).second.lastTtiResourcesAllocated = uldci.m_rbLen;
+				(*itStats).second.lastTtiBsrReceived = uldci.m_tbSize;
+			}
+
+			if (m_harqOn == true) {
+				std::map<uint16_t, uint8_t>::iterator itProcId;
+				itProcId = m_ulHarqCurrentProcessId.find(uldci.m_rnti);
+				if (itProcId != m_ulHarqCurrentProcessId.end()) {
+					uint8_t harqId = (*itProcId).second;
+					std::map<uint16_t, UlHarqProcessesDciBuffer_t>::iterator itDci =
+							m_ulHarqProcessesDciBuffer.find(uldci.m_rnti);
+					if (itDci != m_ulHarqProcessesDciBuffer.end()) {
+						(*itDci).second.at(harqId) = uldci;
+					}
+				}
+			}
+		} else {
+			break;
+		}
 	}
 }
 

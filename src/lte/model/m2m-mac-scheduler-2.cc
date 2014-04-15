@@ -100,8 +100,12 @@ void M2mMacScheduler2::DoSchedUlTriggerReq(const struct FfMacSchedSapProvider::S
 	if (m2mList.size() > 0)
 		congestionLevel = 1.0 - (countReceivedRb / static_cast<double>(m2mList.size()));
 
-	m_congestion = (1.0 / m_congestionTimeWindow) * congestionLevel
-			+ (1.0 - (1.0 / m_congestionTimeWindow)) * m_congestion;
+	if (m_congestionTimeWindow > 0) {
+		m_congestion = (1.0 / m_congestionTimeWindow) * congestionLevel
+				+ (1.0 - (1.0 / m_congestionTimeWindow)) * m_congestion;
+	} else {
+		m_congestion = congestionLevel;
+	}
 	if (m_congestion > m_congestionHigh) {
 		m_minPercentM2mRb = m_minPercentM2mRbHigh;
 	} else if (m_congestion < m_congestionLow) {
