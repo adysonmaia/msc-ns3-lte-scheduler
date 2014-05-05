@@ -40,6 +40,7 @@ do
 
                 echo -e "Scheduler: $scheduler - H2H: $nH2H - M2M T: $nM2MT - M2M R: $nM2MR - useM2MQoSClass: $useClass - index: $index"
                 params="--scheduler=$scheduler --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --useM2MQoSClass=$useClass $paramsGeneral"
+                echo -e "$params"
                 command="$simulator $params'"
                 eval $command
            done

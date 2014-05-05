@@ -25,6 +25,16 @@ protected:
 			struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
 	virtual void UpdateM2MAccessGrantTimers(const std::vector<uint16_t> &ueList, const M2mRbAllocationMap &rbMap,
 			const std::map<uint16_t, uint32_t> &delayMap);
+
+	void SchedUlM2mV1(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize,
+			struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
+	void SchedUlM2mV1Rest(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize,
+			const uint16_t maxRbPerUe, struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
+
+	void SchedUlM2mV2(const std::vector<uint16_t> &ueList, M2mRbAllocationMap &rbMap, const uint16_t rbSize,
+			struct FfMacSchedSapUser::SchedUlConfigIndParameters &response);
+protected:
+	uint8_t m_version;
 };
 
 }

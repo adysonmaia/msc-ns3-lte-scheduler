@@ -110,6 +110,8 @@ def build(bld):
         'model/m2m-mac-scheduler-2.cc',
         'model/m2m-lioumpas-mac-scheduler.cc',
         'model/m2m-abdalla-mac-scheduler.cc',
+        'model/m2m-afrin-mac-scheduler.cc',
+        'model/m2m-giluka-mac-scheduler.cc',
         'helper/m2m-scheduler-param.cc',
         ]
 
@@ -269,6 +271,8 @@ def build(bld):
         'model/m2m-mac-scheduler-2.h',
         'model/m2m-lioumpas-mac-scheduler.h',
         'model/m2m-abdalla-mac-scheduler.h',
+        'model/m2m-afrin-mac-scheduler.h',
+        'model/m2m-giluka-mac-scheduler.h',
         'helper/m2m-scheduler-param.h',
         ]
 

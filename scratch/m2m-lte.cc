@@ -193,6 +193,23 @@ int main(int argc, char *argv[]) {
 	Ptr<Node> pgw = epcHelper->GetPgwNode();
 
 	switch (scheduler) {
+	// Giluka
+	case 8:
+		lteHelper->SetSchedulerType("ns3::M2mGilukaMacScheduler");
+		lteHelper->SetSchedulerAttribute("MinRBPerM2M", UintegerValue(minRBPerM2m));
+		lteHelper->SetSchedulerAttribute("MinRBPerH2H", UintegerValue(minRBPerH2h));
+		lteHelper->SetSchedulerAttribute("UseM2MQoSClass", BooleanValue(useM2mQosClass));
+		enableM2m = true;
+		break;
+	// Afrin
+	case 7:
+		lteHelper->SetSchedulerType("ns3::M2mAfrinMacScheduler");
+		lteHelper->SetSchedulerAttribute("MinPercentRBForM2M", DoubleValue(minPercentRBForM2m));
+		lteHelper->SetSchedulerAttribute("MinRBPerM2M", UintegerValue(minRBPerM2m));
+		lteHelper->SetSchedulerAttribute("MinRBPerH2H", UintegerValue(minRBPerH2h));
+		lteHelper->SetSchedulerAttribute("UseM2MQoSClass", BooleanValue(useM2mQosClass));
+		enableM2m = true;
+		break;
 	// Abdalla
 	case 5:
 		lteHelper->SetSchedulerType("ns3::M2mAbdallaMacScheduler");
@@ -210,13 +227,15 @@ int main(int argc, char *argv[]) {
 		lteHelper->SetSchedulerAttribute("UseM2MQoSClass", BooleanValue(useM2mQosClass));
 		enableM2m = true;
 		break;
-		// Lioumpas
+		// Lioumpas V1 & V2
 	case 3:
+	case 6:
 		lteHelper->SetSchedulerType("ns3::M2mLioumpasMacScheduler");
 		lteHelper->SetSchedulerAttribute("MinPercentRBForM2M", DoubleValue(minPercentRBForM2m));
 		lteHelper->SetSchedulerAttribute("MinRBPerM2M", UintegerValue(minRBPerM2m));
 		lteHelper->SetSchedulerAttribute("MinRBPerH2H", UintegerValue(minRBPerH2h));
 		lteHelper->SetSchedulerAttribute("UseM2MQoSClass", BooleanValue(useM2mQosClass));
+		lteHelper->SetSchedulerAttribute("Version", UintegerValue(scheduler == 6 ? 1 : 2));
 		enableM2m = true;
 		break;
 		// RR

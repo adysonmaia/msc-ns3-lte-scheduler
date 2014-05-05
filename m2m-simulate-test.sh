@@ -23,21 +23,16 @@ nM2MT=83
 nM2MR=167
 delayWeight=0.95
 
-#for index in {0..9}
-for index in 0
+for index in {0..29}
 do
-    paramsGeneral="--simTime=$simTime --nH2HVoIP=$nH2HVoIP --nH2HVideo=$nH2HVideo --nH2HFTP=$nH2HFTP --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --minRBPerH2H=$nRbH2H --nExec=$index"
-    for delayWeight in 0.7 0.8 0.9 0.95 1
+    paramsGeneral="--scheduler=$scheduler --simTime=$simTime --nH2HVoIP=$nH2HVoIP --nH2HVideo=$nH2HVideo --nH2HFTP=$nH2HFTP --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --minRBPerH2H=$nRbH2H --ns3::M2mMacScheduler::M2MDelayWeight=$delayWeight --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR --minRBPerM2M=$nRbM2M --minPercentRBForM2M=$minPerRbM2M --useM2MQoSClass=$useClass --nExec=$index"
+
+    for delaySpread in 0 0.01 0.02 0.04 0.06 0.08 0.1 0.2 0.4 0.6 0.8 1
     do
-        paramsGeneral="$paramsGeneral --ns3::M2mMacScheduler::M2MDelayWeight=$delayWeight --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR"
-        for nMinM2M in 1 2
-        do
-            minPerRbM2M=`python -c "print $nRbM2M*$nMinM2M/$bandwidth.0"`
-            fileSuffix="$delayWeight-$nRbM2M-$minPerRbM2M"
-            params="--scheduler=$scheduler --minRBPerM2M=$nRbM2M --minPercentRBForM2M=$minPerRbM2M --useM2MQoSClass=$useClass --suffixStatsFile=$fileSuffix $paramsGeneral"
-            command="$simulator $params'"
-            echo -e "Scheduler: $scheduler - delayWeight: $delayWeight - minRBPerM2M: $nRbM2M - minPercentRBForM2M: $minPerRbM2M - useM2MQoSClass: $useClass - index: $index"
-            eval $command
-        done
+        fileSuffix="$delaySpread"
+        params="--ns3::M2mMacScheduler::M2MDeniedSpread=$delaySpread --suffixStatsFile=$fileSuffix $paramsGeneral"
+        command="$simulator $params'"
+        echo -e "Scheduler: $scheduler - delaySpread: $delaySpread - index: $index"
+        eval $command
     done
 done

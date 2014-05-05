@@ -24,14 +24,15 @@ for index in {0..29}
 #for index in 0
 do
     paramsGeneral="--simTime=$simTime --intervalM2MTrigger=$intTrigger --minM2MRegularCqi=$minCqi --maxM2MRegularCqi=$maxCqi --nH2HVoIP=$nH2HVoIP --nH2HVideo=$nH2HVideo --nH2HFTP=$nH2HFTP --nExec=$index --scheduler=$scheduler --useM2MQoSClass=$useClass "
-#    for nM2M in 250 200 150 100 50 0
-    for nM2M in 250
+    for nM2M in 250 200 150 100 50 0
+#    for nM2M in 250
     do
         nM2MT=$(($nM2M / 3))
         nM2MR=$(($nM2M - $nM2MT))
         paramsGeneral="$paramsGeneral --nM2MTrigger=$nM2MT --nM2MRegular=$nM2MR"
 
-        for minPerRbM2M in 0.24 0.36 0.6 0.72
+#        for minPerRbM2M in 0.24 0.36 0.6 0.72
+        for minPerRbM2M in 0.2 0.4
         do
             fileSuffix="$minPerRbM2M"
             echo -e "Scheduler: $scheduler - H2H VoIP: $nH2HVoIP - H2H Video: $nH2HVideo - H2H FTP: $nH2HFTP - M2M T: $nM2MT - M2M R: $nM2MR - minPerRbM2M: $minPerRbM2M - index: $index"

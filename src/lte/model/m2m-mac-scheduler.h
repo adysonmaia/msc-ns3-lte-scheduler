@@ -130,6 +130,7 @@ protected:
 	virtual void UpdateM2MAccessGrantTimers(const std::vector<uint16_t> &ueList, const M2mRbAllocationMap &rbMap,
 			const std::map<uint16_t, uint32_t> &delayMap);
 	uint32_t GetUeUlMaxPacketDelay(uint16_t rnti);
+	double GetUeUlSinr(uint16_t rnti, uint16_t rb);
 
 protected:
 	Ptr<LteAmc> m_amc;
@@ -230,6 +231,7 @@ protected:
 	Ptr<M2mSchedulerParam> m_schedulerParam;
 	bool m_useM2mQosClass;
 	double m_m2mDelayWeight;
+	double m_m2mDeniedSpread;
 
 	//Test
 	std::ofstream m_congestionFile;

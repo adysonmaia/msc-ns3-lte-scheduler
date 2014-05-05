@@ -38,7 +38,7 @@ do
         for useClass in 1
         do
             paramsGeneral="--scheduler=$scheduler --useM2MQoSClass=$useClass --ns3::M2mMacScheduler::M2MDelayWeight=$m2mDelayWeight --ns3::M2mMacScheduler2::CongestionLow=$congestionLow --ns3::M2mMacScheduler2::CongestionLow=$congestionHigh --ns3::M2mMacScheduler2::MinPercentRBForM2MLow=$minPerRbM2MLow --ns3::M2mMacScheduler2::MinPercentRBForM2MNormal=$minPerRbM2MNormal --ns3::M2mMacScheduler2::MinPercentRBForM2MHigh=$minPerRbM2MHigh $paramsGeneral"
-            for timeWindow in 0 2 10 20 40 60 80 100
+            for timeWindow in 0 2 5 10 20 40 60 80 100
             do
                 echo -e "Scheduler: $scheduler - H2H VoIP: $nH2HVoIP - H2H Video: $nH2HVideo - H2H FTP: $nH2HFTP - M2M T: $nM2MT - M2M R: $nM2MR - timeWindow: $timeWindow - index: $index"
                 fileSuffix="$timeWindow"
